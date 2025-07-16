@@ -182,7 +182,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setUser(await userData)
         setIsLoading(false)
-
+        console.log(userData)
         return { success: true, message: "로그인에 성공했습니다." }
       } else {
         const msg = await response.text()
@@ -239,6 +239,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) return null
     
     try {     
+      console.log(      "userId : " + user.id,
+                        "full_name :" + profileData.fullName,
+                        "bio : " + profileData.bio,
+                        "profile_image_url : "+ profileData.profile_image_url, //| 'https://example.com/profile.jpg',
+                        "education : " +profileData.education,
+                        "experience : "+ profileData.experience,
+                        "portfolio_url : " + profileData.portfolio_url //'https://example.com/portfolio'
+                        )
 
       const response = await fetch(`${API_GATEWAY_URL}/api/users/me/profile`, {
                     method: 'POST',

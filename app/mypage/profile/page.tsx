@@ -90,8 +90,18 @@ function ProfileEditContent() {
             portfolio_url: profileData.portfolio_url || "",
           })
         }
-        else
-          console.log("받은 데이터 정보가없습니다. : " + profileData)
+        else{
+          setProfile({
+            userId: user.id || "",
+            fullName: "",
+            bio: "",
+            profile_image_url: "",
+            education: "",
+            experience: "",
+            portfolio_url: "",
+          })
+            console.log("받은 데이터 정보가없습니다. : " + profileData)
+          }
       })
       .catch((error) => {
         console.error("프로필 데이터를 가져오는 중 오류 발생:", error)

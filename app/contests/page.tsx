@@ -24,13 +24,14 @@ export default function ContestsPage() {
 
   
   useEffect(() => {
-   
+    
     fetchContests()
     
   }, [])
 
  // 서버에서 공모전 데이터 가져오기
   const fetchContests = async () => {
+    setIsLoading(true)
       try {
         const response = await fetch("http://localhost:8080/api/contests/AllContests", {
           method: 'GET',
@@ -46,6 +47,8 @@ export default function ContestsPage() {
           throw new Error("네트워크 응답이 올바르지 않습니다.")
         }
         const data = await response.json()
+        setIsLoading(false)
+        
         setContests(data)
       } catch (error) {
         console.error("공모전 데이터를 가져오는 중 오류 발생:", error)

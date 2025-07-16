@@ -24,7 +24,7 @@ export default function ContestsPage() {
 
   
   useEffect(() => {
-   
+    setIsLoading(true)
     fetchContests()
     
   }, [])
@@ -47,6 +47,7 @@ export default function ContestsPage() {
         }
         const data = await response.json()
         setContests(data)
+        setIsLoading(false)
       } catch (error) {
         console.error("공모전 데이터를 가져오는 중 오류 발생:", error)
       }

@@ -247,6 +247,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     },
                     credentials: 'include',
                     body: JSON.stringify({
+                        userId: user.id,
                         full_name: profileData.fullName,
                         bio: profileData.bio,
                         profile_image_url: profileData.profile_image_url, //| 'https://example.com/profile.jpg',

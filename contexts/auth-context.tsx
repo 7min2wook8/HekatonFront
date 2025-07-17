@@ -14,10 +14,10 @@ interface Profile {
     userId: string
     fullName?: string
     bio?: string
-    profile_image_url?: string
+    profileImageUrl?: string
     education?: string
     experience?: string
-    portfolio_url?: string
+    portfolioUrl?: string
 }
 
 interface AuthContextType {
@@ -239,13 +239,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) return null
     
     try {     
-      console.log(      "userId : " + user.id,
-                        "full_name :" + profileData.fullName,
-                        "bio : " + profileData.bio,
-                        "profile_image_url : "+ profileData.profile_image_url, //| 'https://example.com/profile.jpg',
-                        "education : " +profileData.education,
-                        "experience : "+ profileData.experience,
-                        "portfolio_url : " + profileData.portfolio_url //'https://example.com/portfolio'
+      console.log(      "user_Id : " + user.id + " / ",
+                        "full_name :" + profileData.fullName+ " / ",
+                        "bio : " + profileData.bio+ " / ",
+                        "profileImageUrl : "+ profileData.profileImageUrl+ " / ", //| 'https://example.com/profile.jpg',
+                        "education : " +profileData.education+ " / ",
+                        "experience : "+ profileData.experience+ " / ",
+                        "portfolioUrl : " + profileData.portfolioUrl //'https://example.com/portfolio'
                         )
 
       const response = await fetch(`${API_GATEWAY_URL}/api/users/me/profile`, {
@@ -255,13 +255,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     },
                     credentials: 'include',
                     body: JSON.stringify({
-                        userId: user.id,
+                        user_Id: user.id,
                         full_name: profileData.fullName,
                         bio: profileData.bio,
-                        profile_image_url: profileData.profile_image_url, //| 'https://example.com/profile.jpg',
+                        profile_image_url: profileData.profileImageUrl, //| 'https://example.com/profile.jpg',
                         education: profileData.education,
                         experience: profileData.experience,
-                        portfolio_url: profileData.portfolio_url //'https://example.com/portfolio'
+                        portfolio_url: profileData.portfolioUrl //'https://example.com/portfolio'
                     })
                 });
 

@@ -119,15 +119,46 @@ function MyPageContent() {
 
   useEffect(() => {
     if (user && user.id) {
-      const localStorageKey = `favoriteContests_${user.id}`;
-      const storedFavorites = localStorage.getItem(localStorageKey);
-      if (storedFavorites) {
-        setFavoriteContests(JSON.parse(storedFavorites));
-      }
+      // const localStorageKey = `favoriteContests_${user.id}`;
+      // console.log("localStorageKey : " + localStorageKey)
+
+      // const storedFavorites = localStorage.getItem(localStorageKey);
+      // console.log("storedFavorites : " + storedFavorites)
+      // if (storedFavorites) {
+      //   setFavoriteContests(JSON.parse(storedFavorites));
+      // }
+      
+      favoliteData(user.id)
+
     }
-  }, [user]);
+  }, []);
 
   if (!user) return null;
+    const favoliteData = async (user_Id : String) : Promise<{ success: boolean; message: string }> => 
+    {
+      try{
+        const response = await fetch(`/api/users/me/favorites`, {
+                      method: 'GET',
+                      headers: {
+                          'Content-Type': 'application/json',
+                      },
+                      credentials: 'include', // 쿠키 포함                   
+                  });
+
+          if(response.ok){
+            return { success: true, message: "즐겨찾기 성공" }
+          }
+          else
+            return { success: false, message: "사용자 정보를 불러오지 못했습니다." }
+
+        }catch (error) {
+
+          return { success: false, message: "즐겨찾기 중 오류가 발생했습니다." }
+      
+        }
+  }
+
+  //const login = async (username: string, password: string): Promise<{ success: boolean; message: string }> => {
 
   const getStatusColor = (status: string) => {
     switch (status) {

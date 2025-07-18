@@ -52,7 +52,7 @@ export default function ContestsPage() {
       // params.append('size', '10');
 
       try {
-        const response = await fetch(`${API_GATEWAY_URL}/api/contests?${params.toString()}`, {
+        const response = await fetch(`${API_GATEWAY_URL}/api/contests?${params.toString()}&size=30`, {
           method: 'GET',
           credentials: 'include',
         });

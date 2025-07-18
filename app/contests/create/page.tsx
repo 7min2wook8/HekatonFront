@@ -82,7 +82,6 @@ function ContestCreateContent() {
     organizerPhone: "",
     website_url: "",
     tags: [] as string[],
-    is_active: true,
   })
 
   const [newTag, setNewTag] = useState("")
@@ -124,7 +123,7 @@ function ContestCreateContent() {
 
       setTimeout(() => {
         router.push("/contests")
-      }, 5000)
+      }, 3000)
     } catch (error: any) {
       console.error("Error creating contest:", error)
       setError(error.message)

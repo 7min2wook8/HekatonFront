@@ -82,6 +82,7 @@ function ContestCreateContent() {
     organizerPhone: "",
     website_url: "",
     tags: [] as string[],
+    is_active: true,
   })
 
   const [newTag, setNewTag] = useState("")

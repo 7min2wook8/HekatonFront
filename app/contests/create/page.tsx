@@ -67,19 +67,20 @@ function ContestCreateContent() {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
+    organizer: "",
+    registration_deadline: "", // 접수 마감일
+    start_date: "",    // 대회 시작일
+    end_date: "",      // 대회 종료일
     category: "",
     region: "",
-    deadline: "",
-    startDate: "",
-    prize: "",
+    prize_description: "",
     maxParticipants: "",
     eligibility: [] as string[],
     requirements: "",
     submissionFormat: "",
-    organizerName: "",
     organizerEmail: "",
     organizerPhone: "",
-    website: "",
+    website_url: "",
     tags: [] as string[],
   })
 
@@ -96,6 +97,10 @@ function ContestCreateContent() {
     const submissionData = {
       ...formData,
       maxParticipants: formData.maxParticipants ? parseInt(formData.maxParticipants, 10) : 0,
+      // 날짜 필드 추가
+      start_date: formData.start_date,
+      end_date: formData.end_date,
+      registration_deadline: formData.registration_deadline,
     };
 
     try {
@@ -294,25 +299,36 @@ function ContestCreateContent() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="startDate">시작일 *</Label>
+                      <Label htmlFor="start_date">대회 시작일 *</Label>
                       <Input
-                        id="startDate"
+                        id="start_date"
                         type="date"
-                        value={formData.startDate}
-                        onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                        value={formData.start_date}
+                        onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
                         required
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="deadline">마감일 *</Label>
+                      <Label htmlFor="end_date">대회 종료일 *</Label>
                       <Input
-                        id="deadline"
+                        id="end_date"
                         type="date"
-                        value={formData.deadline}
-                        onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                        value={formData.end_date}
+                        onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="registration_deadline">접수 마감일 *</Label>
+                      <Input
+                        id="registration_deadline"
+                        type="date"
+                        value={formData.registration_deadline}
+                        onChange={(e) => setFormData({ ...formData, registration_deadline: e.target.value })}
                         required
                       />
                     </div>
@@ -331,11 +347,11 @@ function ContestCreateContent() {
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="prize">상금/혜택</Label>
+                      <Label htmlFor="prize_description">상금/혜택</Label>
                       <Input
-                        id="prize"
-                        value={formData.prize}
-                        onChange={(e) => setFormData({ ...formData, prize: e.target.value })}
+                        id="prize_description"
+                        value={formData.prize_description}
+                        onChange={(e) => setFormData({ ...formData, prize_description: e.target.value })}
                         placeholder="예: 1등 500만원, 2등 300만원"
                       />
                     </div>
@@ -457,11 +473,11 @@ function ContestCreateContent() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="organizerName">주최자명 *</Label>
+                    <Label htmlFor="organizer">주최자명 *</Label>
                     <Input
-                      id="organizerName"
-                      value={formData.organizerName}
-                      onChange={(e) => setFormData({ ...formData, organizerName: e.target.value })}
+                      id="organizer"
+                      value={formData.organizer}
+                      onChange={(e) => setFormData({ ...formData, organizer: e.target.value })}
                       placeholder="주최자 이름"
                       required
                     />
@@ -490,11 +506,11 @@ function ContestCreateContent() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="website">웹사이트</Label>
+                    <Label htmlFor="website_url">웹사이트</Label>
                     <Input
-                      id="website"
-                      value={formData.website}
-                      onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                      id="website_url"
+                      value={formData.website_url}
+                      onChange={(e) => setFormData({ ...formData, website_url: e.target.value })}
                       placeholder="https://example.com"
                     />
                   </div>

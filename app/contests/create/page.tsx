@@ -62,6 +62,7 @@ function ContestCreateContent() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
     title: "",
@@ -84,24 +85,43 @@ function ContestCreateContent() {
 
   const [newTag, setNewTag] = useState("")
   const [newEligibility, setNewEligibility] = useState("")
+  
+  const API_GATEWAY_URL = 'http://localhost:8080';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError(null)
+
+    const submissionData = {
+      ...formData,
+      maxParticipants: formData.maxParticipants ? parseInt(formData.maxParticipants, 10) : 0,
+    };
 
     try {
-      // 실제 API 호출 시뮬레이션
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      const response = await fetch(`${API_GATEWAY_URL}/api/contests`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(submissionData),
+      });
 
-      console.log("공모전 등록 데이터:", formData)
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'An unknown error occurred' }));
+        throw new Error(errorData.message || 'Failed to create contest.');
+      }
+
+      console.log("Contest created successfully:", await response.json());
       setSuccess(true)
 
-      // 3초 후 공모전 목록으로 이동
       setTimeout(() => {
         router.push("/contests")
-      }, 3000)
-    } catch (error) {
-      console.error("공모전 등록 오류:", error)
+      }, 5000)
+    } catch (error: any) {
+      console.error("Error creating contest:", error)
+      setError(error.message)
     } finally {
       setIsLoading(false)
     }
@@ -515,6 +535,7 @@ function ContestCreateContent() {
                     )}
                   </Button>
                   <p className="text-xs text-gray-500 text-center mt-2">등록 후 관리자 승인을 거쳐 게시됩니다</p>
+                  {error && <p className="text-sm text-red-500 text-center mt-2">{error}</p>}
                 </CardContent>
               </Card>
             </div>

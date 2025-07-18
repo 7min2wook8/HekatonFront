@@ -33,7 +33,7 @@ export default function ContestsPage() {
   const fetchContests = async () => {
     setIsLoading(true)
       try {
-        const response = await fetch("http://localhost:8080/api/contests/AllContests", {
+        const response = await fetch("http://localhost:8080/api/contests", {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',

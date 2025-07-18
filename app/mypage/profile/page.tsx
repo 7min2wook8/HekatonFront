@@ -54,7 +54,9 @@ const availableSkills = [
   "Machine Learning",
 ]
 
- 
+
+const defaultImage = "/placeholder.svg"
+
 function ProfileEditContent() {
 
   const { viewProfile, saveProfile, isAuthenticated, user, updateUser, profile } = useAuth()
@@ -62,10 +64,10 @@ function ProfileEditContent() {
     userId : "",
     fullName: "",
     bio: "",
-    profile_image_url: "",
+    profileImageUrl: "",
     education: "",
     experience: "",
-    portfolio_url: "",    
+    portfolioUrl: "",    
   })
   const [newInterest, setNewInterest] = useState("")
   const [newSkill, setNewSkill] = useState("")
@@ -82,16 +84,26 @@ function ProfileEditContent() {
         if (profileData) {      
           setProfile({
             userId: profileData.userId || "",
-            fullName: profileData.fullName || "",
+            fullName: profileData.fullName || "user",
             bio: profileData.bio || "",
-            profile_image_url: profileData.profile_image_url || "",
+            profileImageUrl: profileData.profileImageUrl || defaultImage,
             education: profileData.education || "",
             experience: profileData.experience || "",
-            portfolio_url: profileData.portfolio_url || "",
+            portfolioUrl: profileData.portfolioUrl || "",
           })
         }
-        else
-          console.log("받은 데이터 정보가없습니다. : " + profileData)
+        else{
+          setProfile({
+            userId: user.id || "",
+            fullName: "user",
+            bio: "",
+            profileImageUrl: defaultImage,
+            education: "",
+            experience: "",
+            portfolioUrl: "",
+          })
+            console.log("받은 데이터 정보가없습니다. : " + profileData)
+          }
       })
       .catch((error) => {
         console.error("프로필 데이터를 가져오는 중 오류 발생:", error)
@@ -208,7 +220,7 @@ function ProfileEditContent() {
               </CardHeader>
               <CardContent className="text-center space-y-4">
                 <Avatar className="w-32 h-32 mx-auto">
-                  <AvatarImage src={thisProfile.profile_image_url || "/placeholder.svg"} alt={thisProfile.fullName} />
+                  <AvatarImage src={thisProfile.profileImageUrl || defaultImage} alt={thisProfile.fullName} />
                   <AvatarFallback className="text-4xl">{thisProfile.fullName[0] || "U"}</AvatarFallback>
                 </Avatar>
                 <Button variant="outline" className="w-full bg-transparent" disabled>
@@ -229,14 +241,14 @@ function ProfileEditContent() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
+                  {/* <div className="space-y-2">
                     <Label htmlFor="name">이름</Label>
                     <Input
                       id="name"
                       value={thisProfile.fullName}
                       onChange={(e) => setProfile({ ...thisProfile, fullName: e.target.value })}
                     />
-                  </div>
+                  </div> */}
                   <div className="space-y-2">
                     <Label htmlFor="email">이메일</Label>
                     <Input
@@ -410,8 +422,8 @@ function ProfileEditContent() {
                     <Label htmlFor="portfolio">포트폴리오 URL</Label>
                     <Input
                       id="portfolio"
-                      value={thisProfile.portfolio_url}
-                      onChange={(e) => setProfile({ ...thisProfile, portfolio_url: e.target.value })}
+                      value={thisProfile.portfolioUrl}
+                      onChange={(e) => setProfile({ ...thisProfile, portfolioUrl: e.target.value })}
                       placeholder="https://portfolio.example.com"
                     />
                   </div>

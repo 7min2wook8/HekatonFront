@@ -184,46 +184,45 @@ export default function ContestsPage() {
         {!isLoading && !error && contests.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {contests.map((contest: any) => (
-              <Card key={contest.id} className="hover:shadow-lg transition-shadow cursor-pointer">
-                <div className="relative">
-                  <img
-                    src={contest.image || "/placeholder.svg"}
-                    alt={contest.title}
-                    className="w-full h-48 object-cover rounded-t-lg"
-                  />
-                  <div className="absolute top-2 left-2 flex gap-2">
-                    <Badge>{contest.category}</Badge>
-                    <Badge variant={contest.status === "마감임박" ? "destructive" : "secondary"}>{contest.status}</Badge>
-                  </div>
-                </div>
-                <CardHeader>
-                  <CardTitle className="text-lg line-clamp-2">{contest.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2 text-sm text-gray-600">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <MapPin className="w-4 h-4 mr-1" />
-                        {contest.location}
-                      </div>
-                      <div className="flex items-center">
-                        <Users className="w-4 h-4 mr-1" />
-                        {contest.participants}명
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center text-red-600">
-                        <Clock className="w-4 h-4 mr-1" />
-                        {contest.deadline}
-                      </div>
-                      <div className="font-semibold text-blue-600">상금 {contest.prize}</div>
+              <Link href={`/contests/${contest.id}`} key={contest.id} className="block hover:shadow-lg transition-shadow rounded-lg">
+                <Card className="h-full">
+                  <div className="relative">
+                    <img
+                      src={contest.image || "/placeholder.svg"}
+                      alt={contest.title}
+                      className="w-full h-48 object-cover rounded-t-lg"
+                    />
+                    <div className="absolute top-2 left-2 flex gap-2">
+                      <Badge>{contest.category}</Badge>
+                      <Badge variant={contest.status === "마감임박" ? "destructive" : "secondary"}>{contest.status}</Badge>
                     </div>
                   </div>
-                  <Link href={`/contests/${contest.id}`}>
-                    <Button className="w-full mt-4">자세히 보기</Button>
-                  </Link>
-                </CardContent>
-              </Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg line-clamp-2">{contest.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 text-sm text-gray-600">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <MapPin className="w-4 h-4 mr-1" />
+                          {contest.location}
+                        </div>
+                        <div className="flex items-center">
+                          <Users className="w-4 h-4 mr-1" />
+                          {contest.participants}명
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center text-red-600">
+                          <Clock className="w-4 h-4 mr-1" />
+                          {contest.deadline}
+                        </div>
+                        <div className="font-semibold text-blue-600">상금 {contest.prize}</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
           </div>
         )}

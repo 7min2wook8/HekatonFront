@@ -46,8 +46,12 @@ export default function ContestsPage() {
       }
       if (selectedStatus !== "전체") {
         params.append('status', selectedStatus);
+      }
+      // 페이지네이션과 정렬 파라미터는 우선 기본값으로 설정하거나 추후 추가할 수 있습니다.
+      // params.append('page', '0');
+      // params.append('size', '10');
+
       try {
-        const response = await fetch("http://localhost:8080/api/contests", {
         const response = await fetch(`${API_GATEWAY_URL}/api/contests?${params.toString()}`, {
           method: 'GET',
           credentials: 'include',

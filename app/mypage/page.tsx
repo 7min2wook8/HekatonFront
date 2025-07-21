@@ -114,7 +114,7 @@ const notifications = [
 
 function MyPageContent() {
   const [activeTab, setActiveTab] = useState("overview");
-  const { user } = useAuth();
+  const { user, profile, viewProfile } = useAuth();
   const [favoriteContests, setFavoriteContests] = useState<any[]>([]);
 
   useEffect(() => {
@@ -137,7 +137,7 @@ function MyPageContent() {
     const favoliteData = async (user_Id : String) : Promise<{ success: boolean; message: string }> => 
     {
       try{
-        const response = await fetch(`/api/users/me/favorites`, {
+        const response = await fetch(`http://localhost:8080/api/users/me/favorites`, {
                       method: 'GET',
                       headers: {
                           'Content-Type': 'application/json',

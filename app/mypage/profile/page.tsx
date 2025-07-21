@@ -59,59 +59,29 @@ const defaultImage = "/placeholder.svg"
 
 function ProfileEditContent() {
 
-  const { viewProfile, saveProfile, isAuthenticated, user, updateUser, profile } = useAuth()
-  const [thisProfile, setProfile] = useState({
-    userId : "",
-    fullName: "",
-    bio: "",
-    profileImageUrl: "",
-    education: "",
-    experience: "",
-    portfolioUrl: "",    
-  })
+  const { viewProfile, saveProfile, setProfile, isAuthenticated, user, updateUser, profile } = useAuth()
   const [newInterest, setNewInterest] = useState("")
   const [newSkill, setNewSkill] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const router = useRouter()
-  useEffect(() => {
+  
+ useEffect(() => {
+  const fetchProfile = async () => {
     if (user) {
-       // getProfile()를 통해 프로필 데이터 가져오기
-      
-      viewProfile()
-        .then((profileData) => {
+      const result = await viewProfile();  // 비동기 호출
+      //console.log(profile)
+      if (result?.success) {
+        console.log("프로필 불러오기 성공:", result.message);
 
-        if (profileData) {      
-          setProfile({
-            userId: profileData.userId || "",
-            fullName: profileData.fullName || "user",
-            bio: profileData.bio || "",
-            profileImageUrl: profileData.profileImageUrl || defaultImage,
-            education: profileData.education || "",
-            experience: profileData.experience || "",
-            portfolioUrl: profileData.portfolioUrl || "",
-          })
-        }
-        else{
-          setProfile({
-            userId: user.id || "",
-            fullName: "user",
-            bio: "",
-            profileImageUrl: defaultImage,
-            education: "",
-            experience: "",
-            portfolioUrl: "",
-          })
-            console.log("받은 데이터 정보가없습니다. : " + profileData)
-          }
-      })
-      .catch((error) => {
-        console.error("프로필 데이터를 가져오는 중 오류 발생:", error)
-      })
+      } else {
+        console.warn("프로필 불러오기 실패:", result?.message);
+      }
     }
-  }, [])
+  };
 
-
+  fetchProfile();
+}, []);  // user가 설정될 때 실행
 
   // 프로필 저장 핸들러
   // 이 함수는 실제 API 호출을 시뮬레이션합니다.
@@ -124,9 +94,9 @@ function ProfileEditContent() {
       
       // 실제 API 호출 시뮬레이션
       await new Promise((resolve) => setTimeout(resolve, 1000))
-      console.log(thisProfile)
+      
       // // 프로필 업데이트
-      const result = await saveProfile(thisProfile)
+      const result = await saveProfile();
       // setProfile(result) // API 호출 결과로 프로필 업데이트
       if (!result || !result.success) {
         console.error("프로필 업데이트에 실패했습니다.")
@@ -220,8 +190,8 @@ function ProfileEditContent() {
               </CardHeader>
               <CardContent className="text-center space-y-4">
                 <Avatar className="w-32 h-32 mx-auto">
-                  <AvatarImage src={thisProfile.profileImageUrl || defaultImage} alt={thisProfile.fullName} />
-                  <AvatarFallback className="text-4xl">{thisProfile.fullName[0] || "U"}</AvatarFallback>
+                  <AvatarImage src={profile?.profileImageUrl || defaultImage} alt={profile?.fullName} />
+                  <AvatarFallback className="text-4xl">{ profile?.fullName?.[0] ?? "U" }</AvatarFallback>
                 </Avatar>
                 <Button variant="outline" className="w-full bg-transparent" disabled>
                   <Upload className="w-4 h-4 mr-2" />
@@ -305,8 +275,8 @@ function ProfileEditContent() {
                   <Label htmlFor="bio">자기소개</Label>
                   <Textarea
                     id="bio"
-                    value={thisProfile.bio}
-                    onChange={(e) => setProfile({ ...thisProfile, bio: e.target.value })}
+                    value={profile?.bio}
+                     onChange={(e) => setProfile(prev => prev ? { ...prev, bio: e.target.value } : null)}
                     rows={4}
                     placeholder="자신을 소개해주세요..."
                   />
@@ -404,8 +374,8 @@ function ProfileEditContent() {
                     <Label htmlFor="education">학력</Label>
                     <Input
                       id="education"
-                      value={thisProfile.education}
-                      onChange={(e) => setProfile({ ...thisProfile, education: e.target.value })}
+                      value={profile?.education}
+                      onChange={(e) =>setProfile(prev => prev ? { ...prev, education: e.target.value } : null)}
                       placeholder="예: 컴퓨터공학과 학사"
                     />
                   </div>
@@ -413,8 +383,8 @@ function ProfileEditContent() {
                     <Label htmlFor="experience">경력</Label>
                     <Input
                       id="experience"
-                      value={thisProfile.experience}
-                      onChange={(e) => setProfile({ ...thisProfile, experience: e.target.value })}
+                      value={profile?.experience}
+                      onChange={(e) => setProfile(prev => prev ? { ...prev, experience: e.target.value } : null)}
                       placeholder="예: 프론트엔드 개발자 2년"
                     />
                   </div>
@@ -422,8 +392,8 @@ function ProfileEditContent() {
                     <Label htmlFor="portfolio">포트폴리오 URL</Label>
                     <Input
                       id="portfolio"
-                      value={thisProfile.portfolioUrl}
-                      onChange={(e) => setProfile({ ...thisProfile, portfolioUrl: e.target.value })}
+                      value={profile?.portfolioUrl}
+                      onChange={(e) => setProfile(prev => prev ? { ...prev, portfolioUrl: e.target.value } : null)}
                       placeholder="https://portfolio.example.com"
                     />
                   </div>

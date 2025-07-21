@@ -25,12 +25,14 @@ interface AuthContextType {
   profile: Profile | null 
   isLoading: boolean
   isAuthenticated: boolean
-  viewProfile: () => Promise<Profile>
-  saveProfile: (profileData: Partial<Profile>) => Promise<{ success: boolean; message?: string } | null>
+  viewProfile: () => Promise<{ success: boolean; message?: string; } | null >
+  saveProfile: () => Promise<{ success: boolean; message?: string } | null>
+  setProfile: React.Dispatch<React.SetStateAction<Profile | null>>;
   signUp: (email: string, password: string, username: string, phone: string) => Promise<{ success: boolean; message: string }>
   login: (email: string, password: string) => Promise<{ success: boolean; message: string }>
   logout: () => void
   updateUser: (userData: Partial<User>) => void
+
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -210,6 +212,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  //userid만 profile 데이터 저장
+  const FallbackProfile = (user: User): Profile => ({
+    userId: user.id,
+    fullName: "user",
+    bio: "",
+    profileImageUrl: "/placeholder.svg",
+    education: "",
+    experience: "",
+    portfolioUrl: "",
+  });
+
+          
   const viewProfile = async () => {
     console.log("getProfile 실행")
     if (!user){   
@@ -217,36 +231,77 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } 
      
     try {
+      //데이터 요청
       const response = await fetch(`${API_GATEWAY_URL}/api/users/me/profile`, {
                     method: 'GET',
                     credentials: 'include'
       });
 
+      //데이터가 없으면
       if (!response.ok) {
-        throw new Error("사용자 정보를 불러오지 못했습니다.")        
+        return {
+          success: false,
+          message: "사용자 정보를 불러오지 못했습니다.",          
+        }        
       }
-      const profileData = await response.json()   
-      
-      return profileData
-      
+
+      const profileData = await response.json()     
+      console.log("profileData : " + profileData.portfolioUrl)
+      if (profileData) { 
+
+        const parsedProfile: Profile = {
+          userId: profileData.userId || "",
+          fullName: profileData.fullName || "user",
+          bio: profileData.bio || "",
+          profileImageUrl: profileData.profileImageUrl || "/placeholder.svg",
+          education: profileData.education || "",
+          experience: profileData.experience || "",
+          portfolioUrl: profileData.portfolioUrl || "",
+        };
+        //profile 데이터 저장
+        setProfile(parsedProfile)
+        
+        return {
+          success: true,
+          message: "프로필 불러오기 성공",            
+        }
+
+      }
+      else{
+
+          setProfile(FallbackProfile(user));
+         
+          return {
+            success: false,
+            message: "받은 데이터 정보가 없습니다.",            
+          }
+        }
+
     } catch (error) {
+
       console.error("프로필 불러오기 오류:", error)
-      return null
+
+        return {
+        success: false,
+        message: "프로필 불러오기 오류",        
+      }
+
     }
+
   }
 
-  const saveProfile = async (profileData: Partial<Profile>): Promise<{ success: boolean; message?: string } | null> => {
+  const saveProfile = async (): Promise<{ success: boolean; message?: string } | null> => {
     if (!user) return null
     
-    try {     
-      console.log(      "user_Id : " + user.id + " / ",
-                        "full_name :" + profileData.fullName+ " / ",
-                        "bio : " + profileData.bio+ " / ",
-                        "profileImageUrl : "+ profileData.profileImageUrl+ " / ", //| 'https://example.com/profile.jpg',
-                        "education : " +profileData.education+ " / ",
-                        "experience : "+ profileData.experience+ " / ",
-                        "portfolioUrl : " + profileData.portfolioUrl //'https://example.com/portfolio'
-                        )
+    try {         
+
+                       console.log("userId:" + user.id) 
+                       console.log ("full_name:"+ profile?.fullName),
+                       console.log ("bio:"+ profile?.bio),
+                       console.log ("profile_image_url: "+profile?.profileImageUrl), //| 'https://example.com/profile.jpg',
+                       console.log ("education:"+ profile?.education),
+                       console.log ("experience:" +profile?.experience),
+                       console.log ("portfolio_url:" +profile?.portfolioUrl) //'https://example.com/portfolio'
 
       const response = await fetch(`${API_GATEWAY_URL}/api/users/me/profile`, {
                     method: 'POST',
@@ -255,13 +310,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     },
                     credentials: 'include',
                     body: JSON.stringify({
-                        user_Id: user.id,
-                        full_name: profileData.fullName,
-                        bio: profileData.bio,
-                        profile_image_url: profileData.profileImageUrl, //| 'https://example.com/profile.jpg',
-                        education: profileData.education,
-                        experience: profileData.experience,
-                        portfolio_url: profileData.portfolioUrl //'https://example.com/portfolio'
+                        userId: user.id,
+                        fullName: profile?.fullName,
+                        bio: profile?.bio,
+                        profileImageUrl: profile?.profileImageUrl, //| 'https://example.com/profile.jpg',
+                        education: profile?.education,
+                        experience: profile?.experience,
+                        portfolioUrl: profile?.portfolioUrl //'https://example.com/portfolio'
                     })
                 });
 
@@ -287,6 +342,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signUp,
     viewProfile,
     saveProfile,
+    setProfile,
     login,
     logout,
     updateUser,

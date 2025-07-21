@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -32,61 +32,6 @@ import {
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 import { useAuth } from "@/contexts/auth-context"
-
-// 더미 공모전 데이터
-const contestData = {
-  id: 1,
-  title: "2025 스타트업 아이디어 공모전",
-  description: `혁신적인 스타트업 아이디어로 미래를 바꿔보세요!
-
-이번 공모전은 창의적이고 실현 가능한 스타트업 아이디어를 발굴하고 지원하기 위해 마련되었습니다. 
-기술, 사회, 환경 등 다양한 분야의 아이디어를 환영하며, 선정된 팀에게는 창업 지원금과 멘토링을 제공합니다.
-
-**주요 특징:**
-- 실무진과의 1:1 멘토링 제공
-- 투자자 네트워킹 기회
-- 창업 교육 프로그램 참여 가능
-- 사업화 지원금 최대 1억원
-
-**심사 기준:**
-1. 아이디어의 창의성 및 독창성 (30%)
-2. 시장성 및 사업성 (30%)
-3. 기술적 실현 가능성 (25%)
-4. 팀 구성 및 실행력 (15%)`,
-  category: "창업",
-  region: "서울",
-  startDate: "2025-01-01",
-  deadline: "2025-02-28",
-  image: "/placeholder.svg?height=400&width=800",
-  participants: 156,
-  maxParticipants: 200,
-  prize: "1등 5,000만원, 2등 3,000만원, 3등 2,000만원",
-  status: "모집중",
-  eligibility: ["대학생", "대학원생", "직장인", "창업자"],
-  requirements: `- 팀 구성: 2-4명 (개인 참가 가능)
-- 사업계획서 제출 (PPT 20페이지 이내)
-- 프로토타입 또는 MVP 제출 (선택사항)
-- 발표 자료 준비 (결선 진출 시)`,
-  submissionFormat: `**제출 서류:**
-1. 참가신청서
-2. 사업계획서 (PPT 형식, 20페이지 이내)
-3. 팀원 소개서
-4. 프로토타입 또는 데모 영상 (선택)
-
-**제출 방법:**
-- 이메일 제출: contest@equallocal.com
-- 제출 기한: 2025년 2월 28일 23:59까지`,
-  organizer: {
-    name: "이퀄로컬",
-    email: "contest@equallocal.com",
-    phone: "02-1234-5678",
-    website: "https://equallocal.com",
-  },
-  tags: ["스타트업", "창업", "아이디어", "혁신", "투자"],
-  isLiked: false,
-  likeCount: 89,
-  viewCount: 1234,
-}
 
 // 더미 팀 모집 게시글
 const teamPosts = [
@@ -149,16 +94,50 @@ export default function ContestDetailPage() {
   const params = useParams()
   const router = useRouter()
   const { user, isAuthenticated } = useAuth()
-  const [contest, setContest] = useState(contestData)
-  const [isLoading, setIsLoading] = useState(false)
+  const [contest, setContest] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [showApplicationForm, setShowApplicationForm] = useState(false)
   const [showLikeNotification, setShowLikeNotification] = useState(false)
+
+  const API_GATEWAY_URL = 'http://localhost:8080';
+
+  useEffect(() => {
+    const fetchContest = async () => {
+      if (!params.id) return;
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const response = await fetch(`${API_GATEWAY_URL}/api/contests/${params.id}`, {
+          method: 'GET',
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          throw new Error("네트워크 응답이 올바르지 않습니다.");
+        }
+
+        const data = await response.json();
+        setContest(data);
+      } catch (error: any) {
+        console.error("공모전 데이터를 가져오는 중 오류 발생:", error);
+        setError(error.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchContest();
+  }, [params.id]);
 
   const handleLike = () => {
     if (!isAuthenticated) {
       toast.warning("로그인이 필요합니다.")
       return
     }
+    if (!contest) return;
 
     const newIsLiked = !contest.isLiked
 
@@ -201,7 +180,7 @@ export default function ContestDetailPage() {
     }
 
     // UI State Update
-    setContest((prev) => ({
+    setContest((prev: any) => ({
       ...prev,
       isLiked: newIsLiked,
       likeCount: newIsLiked ? prev.likeCount + 1 : prev.likeCount - 1,
@@ -217,6 +196,7 @@ export default function ContestDetailPage() {
   }
 
   const handleShare = async () => {
+    if (!contest) return;
     if (navigator.share) {
       try {
         await navigator.share({
@@ -248,6 +228,7 @@ export default function ContestDetailPage() {
   }
 
   const getDaysLeft = () => {
+    if (!contest) return 0;
     const deadline = new Date(contest.deadline)
     const today = new Date()
     const diffTime = deadline.getTime() - today.getTime()
@@ -256,6 +237,18 @@ export default function ContestDetailPage() {
   }
 
   const daysLeft = getDaysLeft()
+
+  if (isLoading) {
+    return <div className="min-h-screen bg-gray-50 flex items-center justify-center">로딩 중...</div>;
+  }
+
+  if (error) {
+    return <div className="min-h-screen bg-gray-50 flex items-center justify-center">오류: {error}</div>;
+  }
+
+  if (!contest) {
+    return <div className="min-h-screen bg-gray-50 flex items-center justify-center">공모전 정보를 찾을 수 없습니다.</div>;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

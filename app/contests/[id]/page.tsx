@@ -165,8 +165,8 @@ export default function ContestDetailPage() {
   };
 
   const getDaysLeft = () => {
-    if (!contest?.registration_deadline) return 0;
-    const deadline = new Date(contest.registration_deadline);
+    if (!contest?.registrationDeadline) return 0;
+    const deadline = new Date(contest.registrationDeadline);
     const today = new Date();
     const diffTime = deadline.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -221,6 +221,8 @@ export default function ContestDetailPage() {
                   alt={contest.title || "공모전 이미지"}
                   className="w-full h-64 object-cover rounded-t-lg"
                 />
+
+                {/* 카테고리(구현중) */}
                 <div className="absolute top-4 left-4 flex gap-2">
                   {contest.category && <Badge>{contest.category}</Badge>}
                   {contest.status && (
@@ -231,6 +233,7 @@ export default function ContestDetailPage() {
                 </div>
                 <div className="absolute top-4 right-4 flex flex-col items-end gap-2">
                   <div className="flex gap-2">
+                    {/* 즐겨찾기 버튼(구현중) */}
                     <Button
                       variant="secondary"
                       size="sm"
@@ -244,6 +247,7 @@ export default function ContestDetailPage() {
                       />
                       {contest.likeCount || 0}
                     </Button>
+                    {/* 공유하기 버튼 */}
                     <Button
                       variant="secondary"
                       size="sm"
@@ -263,6 +267,7 @@ export default function ContestDetailPage() {
 
               <CardHeader>
                 <CardTitle className="text-2xl mb-2">{contest.title}</CardTitle>
+                {/* 지역(미구현) */}
                 <div className="flex flex-wrap gap-4 text-sm text-gray-600">
                   {contest.region && (
                     <div className="flex items-center">
@@ -270,17 +275,19 @@ export default function ContestDetailPage() {
                       {contest.region}
                     </div>
                   )}
+                  {/* 참가 정원(미구현) */}
                   {contest.maxParticipants && (
                     <div className="flex items-center">
                       <Users className="w-4 h-4 mr-1" />
                       최대 {contest.maxParticipants}명
                     </div>
                   )}
-                  {(contest.start_date || contest.end_date) && (
+                  {/* 대회 시작일 / 대회 종료일 */}
+                  {(contest.startDate || contest.endDate) && (
                     <div className="flex items-center">
                       <Calendar className="w-4 h-4 mr-1" />
-                      {contest.start_date || "미정"} ~{" "}
-                      {contest.end_date || "미정"}
+                      {contest.startDate || "미정"} ~{" "}
+                      {contest.endDate || "미정"}
                     </div>
                   )}
                 </div>
@@ -299,6 +306,7 @@ export default function ContestDetailPage() {
                     <CardTitle>공모전 상세 설명</CardTitle>
                   </CardHeader>
                   <CardContent>
+                    {/* 상세 정보 */}
                     <div className="prose max-w-none whitespace-pre-line text-gray-700 leading-relaxed">
                       {contest.description}
                     </div>
@@ -307,6 +315,7 @@ export default function ContestDetailPage() {
               </TabsContent>
 
               <TabsContent value="requirements">
+                {/* 참가 자격(미구현) */}
                 <div className="space-y-6">
                   {contest.eligibility?.length > 0 && (
                     <Card>
@@ -327,6 +336,7 @@ export default function ContestDetailPage() {
                       </CardContent>
                     </Card>
                   )}
+                  {/* 참가 요구사항 */}
                   {contest.requirements && (
                     <Card>
                       <CardHeader>
@@ -342,6 +352,7 @@ export default function ContestDetailPage() {
                       </CardContent>
                     </Card>
                   )}
+                  {/* 제출 형식(미구현) */}
                   {contest.submissionFormat && (
                     <Card>
                       <CardHeader>
@@ -375,18 +386,20 @@ export default function ContestDetailPage() {
                   </div>
                 </div>
                 <Separator className="my-4" />
+                {/* 접수 마감일 */}
                 <div className="text-sm text-gray-600 space-y-1">
-                  {contest.registration_deadline && (
-                    <div>접수 마감: {contest.registration_deadline}</div>
+                  {contest.registrationDeadline && (
+                    <div>접수 마감: {contest.registrationDeadline}</div>
                   )}
+                  {/* 조회수(미구현) */}
                   {contest.viewCount !== undefined && (
                     <div>조회수: {contest.viewCount.toLocaleString()}</div>
                   )}
                 </div>
               </CardContent>
             </Card>
-
-            {(contest.prize_description || contest.prize) && (
+                  {/* 상금 */}
+            {(contest.prizeDescription) && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
@@ -396,7 +409,7 @@ export default function ContestDetailPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-sm text-gray-700 whitespace-pre-line">
-                    {contest.prize_description || contest.prize}
+                    {contest.prizeDescription}
                   </div>
                 </CardContent>
               </Card>
@@ -409,12 +422,14 @@ export default function ContestDetailPage() {
                   주최자 정보
                 </CardTitle>
               </CardHeader>
+              {/* 주최자 정보 */}
               <CardContent className="space-y-3">
                   <div>
                     <div className="font-medium">
                       {contest.organizer}
                     </div>
                   </div>
+                  {/* 주최자 이메일(미구현) */}
                 <div className="space-y-2 text-sm">
                   {(contest.organizerEmail) && (
                     <div className="flex items-center">
@@ -429,6 +444,7 @@ export default function ContestDetailPage() {
                       </a>
                     </div>
                   )}
+                  {/* 주최자 전화번호(미구현) */}
                   {(contest.organizerPhone) && (
                     <div className="flex items-center">
                       <Phone className="w-4 h-4 mr-2 text-gray-400" />
@@ -437,6 +453,7 @@ export default function ContestDetailPage() {
                       </span>
                     </div>
                   )}
+                  {/* 주최자 웹사이트 */}
                   {(contest.websiteUrl) && (
                     <div className="flex items-center">
                       <Globe className="w-4 h-4 mr-2 text-gray-400" />
@@ -446,7 +463,7 @@ export default function ContestDetailPage() {
                         rel="noopener noreferrer"
                         className="text-blue-600 hover:underline flex items-center"
                       >
-                        웹사이트 방문
+                        {contest.websiteUrl}
                         <ExternalLink className="w-3 h-3 ml-1" />
                       </a>
                     </div>
@@ -454,7 +471,7 @@ export default function ContestDetailPage() {
                 </div>
               </CardContent>
             </Card>
-
+                  {/* 태그(미구현) */}
             {contest.tags?.length > 0 && (
               <Card>
                 <CardHeader>

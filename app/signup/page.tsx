@@ -33,6 +33,34 @@ export default function SignupPage() {
   const [agreements, setAgreements] = useState<Record<string, boolean>>({})
 
   const { signUp, isAuthenticated } = useAuth()
+
+  // 사용자가 전화번호 입력 필드에 값을 입력할 때 호출되는 함수
+const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // 입력된 값에서 숫자가 아닌 모든 문자(공백, 하이픈 등)를 제거
+  const rawValue = e.target.value.replace(/\D/g, "")
+
+  // 가공된 전화번호를 저장할 변수
+  let formattedValue = ""
+
+  // 전화번호의 앞 3자리 (ex. 010)
+  if (rawValue.length > 0) {
+    formattedValue = rawValue.substring(0, 3)
+  }
+
+  // 전화번호 중간 4자리 (ex. 1234)
+  if (rawValue.length > 3) {
+    formattedValue += `-${rawValue.substring(3, 7)}`
+  }
+
+  // 전화번호 마지막 4자리 (ex. 5678)
+  if (rawValue.length > 7) {
+    formattedValue += `-${rawValue.substring(7, 11)}`
+  }
+
+  // 가공된 전화번호를 상태로 저장 (예: 010-1234-5678)
+  setFormData({ ...formData, phone: formattedValue })
+}
+
   
   // 약관 동의 정보 확인
   useEffect(() => {
@@ -71,9 +99,13 @@ export default function SignupPage() {
 
       // 실제 API 호출 시뮬레이션
       await new Promise((resolve) => setTimeout(resolve, 2000))
-      // 회원가입 API 호출
+      
+      // DB 전송을 위해 하이픈 등 숫자가 아닌 문자 모두 제거
+      const phoneForDB = formData.phone.replace(/\D/g, "");
+      console.log("DB 전송 직전 값:", phoneForDB);
 
-      const response = await signUp(formData.email, formData.password, formData.username, formData.phone)
+      // 회원가입 API 호출
+      const response = await signUp(formData.email, formData.password, formData.username, phoneForDB)
 
 
       if (response.success) {
@@ -127,7 +159,7 @@ export default function SignupPage() {
         </div>
 
         <div className="max-w-2xl mx-auto">
-          {/* 진�� 단계 */}
+          {/* 진행 단계 */}
           <div className="mb-8">
             <div className="flex items-center justify-center space-x-4">
               <div className="flex items-center">
@@ -237,14 +269,15 @@ export default function SignupPage() {
                       전화번호 *
                     </Label>
                     <Input
-                      id="phone"
-                      type="tel"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      placeholder="010-0000-0000"
-                      required
-                      disabled={isLoading}
-                    />
+                        id="phone"
+                        type="tel"
+                        value={formData.phone}
+                        onChange={handlePhoneChange}
+                        placeholder="하이픈(-)제외하고 입력"
+                        required
+                        disabled={isLoading}
+                        maxLength={13}
+                      />
                     <p className="text-xs text-gray-500">본인 확인 및 중요 알림 발송에 사용됩니다</p>
                   </div>
                 </div>

@@ -198,7 +198,8 @@ export default function ContestDetailPage() {
       </div>
     );
   }
-
+  // 여기까지 기능 요소 (JS)
+  // 이 아래부터 실제 구현되는 페이지 구성
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />

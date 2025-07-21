@@ -23,46 +23,71 @@ export default function ContestsPage() {
   const [error, setError] = useState<string | null>(null)
 
   
-  useEffect(() => {
-   
-    fetchContests()
-    
-  }, [])
+  const API_GATEWAY_URL = 'http://localhost:8080';
 
- // 서버에서 공모전 데이터 가져오기
-  const fetchContests = async () => {
-    setIsLoading(true)
-      try {
-        const response = await fetch("http://localhost:8080/api/contests/AllContests", {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },          
-          credentials: 'include', // 쿠키 포함
-
-        })
-
-        // 네트워크 응답 확인
-        if (!response.ok) {
-          throw new Error("네트워크 응답이 올바르지 않습니다.")
-        }
-        const data = await response.json()
-        setIsLoading(false)
-        setContests(data)
-      } catch (error) {
-        console.error("공모전 데이터를 가져오는 중 오류 발생:", error)
-      }
-    }
   
+  useEffect(() => {
+    const fetchContests = async () => {
+      setIsLoading(true);
+      setError(null);
 
-  const filteredContests = contests.filter((contest: any) => {
-    return (
-      contest.title.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      (selectedCategory === "전체" || contest.category === selectedCategory) &&
-      (selectedLocation === "전체" || contest.location === selectedLocation) &&
-      (selectedStatus === "전체" || contest.status === selectedStatus)
-    )
-  })
+      // URLSearchParams를 사용하여 쿼리 파라미터를 동적으로 구성합니다.
+      const params = new URLSearchParams();
+      
+      // 각 필터 상태에 따라 파라미터를 추가합니다. '전체'가 아닌 경우에만 추가합니다.
+      if (searchTerm) {
+        params.append('keyword', searchTerm);
+      }
+      if (selectedCategory !== "전체") {
+        params.append('category', selectedCategory);
+      }
+      if (selectedLocation !== "전체") {
+        params.append('location', selectedLocation);
+      }
+      if (selectedStatus !== "전체") {
+        params.append('status', selectedStatus);
+      }
+      // 페이지네이션과 정렬 파라미터는 우선 기본값으로 설정하거나 추후 추가할 수 있습니다.
+      // params.append('page', '0');
+      // params.append('size', '10');
+
+      try {
+        const response = await fetch(`${API_GATEWAY_URL}/api/contests?${params.toString()}`, {
+          method: 'GET',
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          throw new Error("네트워크 응답이 올바르지 않습니다.");
+        }
+
+        const data = await response.json();
+        
+        // API 응답이 배열인지, 혹은 .content 프로퍼티에 배열이 있는지 확인합니다.
+        if (Array.isArray(data)) {
+          setContests(data);
+        } else if (data && Array.isArray(data.content)) {
+          setContests(data.content);
+        } else {
+          console.error("API 응답이 배열 또는 예상되는 객체 구조가 아닙니다:", data);
+          setContests([]); // 데이터가 없거나 형식이 맞지 않으면 빈 배열로 설정
+        }
+
+      } catch (error: any) {
+        console.error("공모전 데이터를 가져오는 중 오류 발생:", error);
+        setError(error.message);
+        setContests([]); // 오류 발생 시 빈 배열로 설정
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchContests();
+  }, [searchTerm, selectedCategory, selectedLocation, selectedStatus]); // 필터가 변경될 때마다 fetchContests 함수를 다시 호출합니다.
+
+  // 서버에서 필터링을 하므로 클라이언트 측 필터링 로직은 더 이상 필요하지 않습니다.
+  // 렌더링할 때 'contests'를 직접 사용합니다.
+  const filteredContests = contests;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -149,16 +174,16 @@ export default function ContestsPage() {
         {/* 결과 개수 */}
         <div className="mb-6">
           <p className="text-gray-600">
-            총 <span className="font-semibold text-blue-600">{filteredContests.length}</span>개의 공모전이 있습니다
+            총 <span className="font-semibold text-blue-600">{contests.length}</span>개의 공모전이 있습니다
           </p>
         </div>
 
         {/* 공모전 그리드 */}
         {isLoading && <div className="text-center py-12 text-gray-500">공모전 목록을 불러오는 중...</div>}
         {error && <div className="text-center py-12 text-red-500">오류 발생: {error}</div>}
-        {!isLoading && !error && filteredContests.length > 0 && (
+        {!isLoading && !error && contests.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredContests.map((contest: any) => (
+            {contests.map((contest: any) => (
               <Card key={contest.id} className="hover:shadow-lg transition-shadow cursor-pointer">
                 <div className="relative">
                   <img
@@ -204,7 +229,7 @@ export default function ContestsPage() {
         )}
 
         {/* 빈 상태 */}
-        {!isLoading && !error && filteredContests.length === 0 && (
+        {!isLoading && !error && contests.length === 0 && (
           <div className="text-center py-12">
             <p className="text-gray-500 text-lg">검색 조건에 맞는 공모전이 없습니다.</p>
             <p className="text-gray-400 mt-2">다른 조건으로 검색해보세요.</p>

@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
+import { createContext, SetStateAction, useContext, useEffect, useState, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 
 interface User {
@@ -20,6 +20,32 @@ interface Profile {
     portfolioUrl?: string
 }
 
+interface UserSkills{
+  id: string
+  userID : string
+  skillId : string  
+  proficiency : string
+  created_at : string
+}
+
+interface Skills{  
+  id: string
+  name : string
+  category : string  
+  description : string  
+}
+
+interface NcsCategory{
+  id : string
+  code : string
+  name : string
+  parent_code : string
+  level : string
+  description : string 
+  
+}
+
+
 interface AuthContextType {
   user: User | null 
   profile: Profile | null 
@@ -32,6 +58,14 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<{ success: boolean; message: string }>
   logout: () => void
   updateUser: (userData: Partial<User>) => void
+
+  getUserSkills : () => Promise<{ success: boolean; message?: string; } | null >
+
+  setUserSkills: React.Dispatch<React.SetStateAction<UserSkills | null>>;
+
+  getSkills : () => Promise<{ success: boolean; message?: string; } | null >
+
+  getNcsCategory : () => Promise<{success:boolean; message?: string} | null >
 
 }
 
@@ -344,6 +378,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
   }
 
+  const getUserSkills = async (): Promise<{ success: boolean; message?: string } | null> => {
+
+    return { success: true, message: "프로필이 성공적으로 업데이트되었습니다." }
+
+  }
+
+  const setUserSkills = async (): Promise<{ success: boolean; message?: string } | null> => {
+
+    return { success: true, message: "프로필이 성공적으로 업데이트되었습니다." }
+    
+  }
+
+  const getNcsCategory = async (): Promise<{ success: boolean; message?: string } | null> => {
+
+    return { success: true, message: "프로필이 성공적으로 업데이트되었습니다." }
+    
+  }
+  const getSkills = async (): Promise<{ success: boolean; message?: string } | null> => {
+
+    try{
+      const response = await fetch(`${API_GATEWAY_URL}/skills`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',                   
+                });
+
+      if (!response.ok) {
+        const msg = await response.text()
+        return { success: false, message: msg || "기술 업데이트에 실패했습니다." }
+      }
+      // Optionally update user state here if needed
+      const msg = await response.json()
+      console.log(msg)
+      return { success: true, message: "기술 성공적으로 업데이트되었습니다." }
+    } catch (error) {
+      console.error("프로필 업데이트 오류:", error)
+      return { success: false, message: "기술 업데이트 중 오류가 발생했습니다." }
+    }
+
+
+    return { success: true, message: "프로필이 성공적으로 업데이트되었습니다." }
+
+  }
+
   const value: AuthContextType = {
     user,
     profile,
@@ -356,7 +436,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     logout,
     updateUser,
-    
+    getUserSkills,
+    setUserSkills,
+    getSkills,
+    getNcsCategory
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

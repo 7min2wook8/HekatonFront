@@ -62,46 +62,71 @@ function ContestCreateContent() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
     title: "",
     description: "",
+    organizer: "",
+    registration_deadline: "", // 접수 마감일
+    start_date: "",    // 대회 시작일
+    end_date: "",      // 대회 종료일
     category: "",
     region: "",
-    deadline: "",
-    startDate: "",
-    prize: "",
+    prize_description: "",
     maxParticipants: "",
     eligibility: [] as string[],
     requirements: "",
     submissionFormat: "",
-    organizerName: "",
     organizerEmail: "",
     organizerPhone: "",
-    website: "",
+    website_url: "",
     tags: [] as string[],
   })
 
   const [newTag, setNewTag] = useState("")
   const [newEligibility, setNewEligibility] = useState("")
+  
+  const API_GATEWAY_URL = 'http://localhost:8080';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError(null)
+
+    const submissionData = {
+      ...formData,
+      maxParticipants: formData.maxParticipants ? parseInt(formData.maxParticipants, 10) : 0,
+      // 날짜 필드 추가
+      start_date: formData.start_date,
+      end_date: formData.end_date,
+      registration_deadline: formData.registration_deadline,
+    };
 
     try {
-      // 실제 API 호출 시뮬레이션
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      const response = await fetch(`${API_GATEWAY_URL}/api/contests`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(submissionData),
+      });
 
-      console.log("공모전 등록 데이터:", formData)
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'An unknown error occurred' }));
+        throw new Error(errorData.message || 'Failed to create contest.');
+      }
+
+      console.log("Contest created successfully:", await response.json());
       setSuccess(true)
 
-      // 3초 후 공모전 목록으로 이동
       setTimeout(() => {
         router.push("/contests")
       }, 3000)
-    } catch (error) {
-      console.error("공모전 등록 오류:", error)
+    } catch (error: any) {
+      console.error("Error creating contest:", error)
+      setError(error.message)
     } finally {
       setIsLoading(false)
     }
@@ -274,25 +299,36 @@ function ContestCreateContent() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="startDate">시작일 *</Label>
+                      <Label htmlFor="start_date">대회 시작일 *</Label>
                       <Input
-                        id="startDate"
+                        id="start_date"
                         type="date"
-                        value={formData.startDate}
-                        onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                        value={formData.start_date}
+                        onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
                         required
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="deadline">마감일 *</Label>
+                      <Label htmlFor="end_date">대회 종료일 *</Label>
                       <Input
-                        id="deadline"
+                        id="end_date"
                         type="date"
-                        value={formData.deadline}
-                        onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                        value={formData.end_date}
+                        onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="registration_deadline">접수 마감일 *</Label>
+                      <Input
+                        id="registration_deadline"
+                        type="date"
+                        value={formData.registration_deadline}
+                        onChange={(e) => setFormData({ ...formData, registration_deadline: e.target.value })}
                         required
                       />
                     </div>
@@ -311,11 +347,11 @@ function ContestCreateContent() {
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="prize">상금/혜택</Label>
+                      <Label htmlFor="prize_description">상금/혜택</Label>
                       <Input
-                        id="prize"
-                        value={formData.prize}
-                        onChange={(e) => setFormData({ ...formData, prize: e.target.value })}
+                        id="prize_description"
+                        value={formData.prize_description}
+                        onChange={(e) => setFormData({ ...formData, prize_description: e.target.value })}
                         placeholder="예: 1등 500만원, 2등 300만원"
                       />
                     </div>
@@ -437,11 +473,11 @@ function ContestCreateContent() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="organizerName">주최자명 *</Label>
+                    <Label htmlFor="organizer">주최자명 *</Label>
                     <Input
-                      id="organizerName"
-                      value={formData.organizerName}
-                      onChange={(e) => setFormData({ ...formData, organizerName: e.target.value })}
+                      id="organizer"
+                      value={formData.organizer}
+                      onChange={(e) => setFormData({ ...formData, organizer: e.target.value })}
                       placeholder="주최자 이름"
                       required
                     />
@@ -470,11 +506,11 @@ function ContestCreateContent() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="website">웹사이트</Label>
+                    <Label htmlFor="website_url">웹사이트</Label>
                     <Input
-                      id="website"
-                      value={formData.website}
-                      onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                      id="website_url"
+                      value={formData.website_url}
+                      onChange={(e) => setFormData({ ...formData, website_url: e.target.value })}
                       placeholder="https://example.com"
                     />
                   </div>
@@ -515,6 +551,7 @@ function ContestCreateContent() {
                     )}
                   </Button>
                   <p className="text-xs text-gray-500 text-center mt-2">등록 후 관리자 승인을 거쳐 게시됩니다</p>
+                  {error && <p className="text-sm text-red-500 text-center mt-2">{error}</p>}
                 </CardContent>
               </Card>
             </div>

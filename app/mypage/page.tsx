@@ -128,7 +128,7 @@ function MyPageContent() {
       //   setFavoriteContests(JSON.parse(storedFavorites));
       // }
       
-      favoliteData(user.id)
+      //favoliteData(user.id)
 
     }
   }, []);
@@ -137,6 +137,7 @@ function MyPageContent() {
     const favoliteData = async (user_Id : String) : Promise<{ success: boolean; message: string }> => 
     {
       try{
+        //미구현
         const response = await fetch(`http://localhost:8080/api/users/me/favorites`, {
                       method: 'GET',
                       headers: {

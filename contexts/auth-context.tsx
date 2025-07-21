@@ -11,7 +11,7 @@ interface User {
 }
 
 interface Profile {
-    userId: string
+    //userId: string
     fullName?: string
     bio?: string
     profileImageUrl?: string
@@ -213,8 +213,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   //userid만 profile 데이터 저장
-  const FallbackProfile = (user: User): Profile => ({
-    userId: user.id,
+  const FallbackProfile = (user: User): Profile => ({  
     fullName: "user",
     bio: "",
     profileImageUrl: "/placeholder.svg",
@@ -239,6 +238,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       //데이터가 없으면
       if (!response.ok) {
+         const parsedProfile: Profile = {         
+          fullName: "user",
+          bio: "",
+          profileImageUrl: "/placeholder.svg",
+          education: "",
+          experience:  "",
+          portfolioUrl: "",
+        };
+
+        //profile 데이터 저장
+        setProfile(parsedProfile)
+
         return {
           success: false,
           message: "사용자 정보를 불러오지 못했습니다.",          
@@ -246,11 +257,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const profileData = await response.json()     
-      console.log("profileData : " + profileData.portfolioUrl)
+      //console.log("profileData : " + profileData.portfolioUrl)
       if (profileData) { 
 
         const parsedProfile: Profile = {
-          userId: profileData.userId || "",
           fullName: profileData.fullName || "user",
           bio: profileData.bio || "",
           profileImageUrl: profileData.profileImageUrl || "/placeholder.svg",
@@ -296,12 +306,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {         
 
                        console.log("userId:" + user.id) 
-                       console.log ("full_name:"+ profile?.fullName),
+                       console.log ("fullName:"+ profile?.fullName),
                        console.log ("bio:"+ profile?.bio),
-                       console.log ("profile_image_url: "+profile?.profileImageUrl), //| 'https://example.com/profile.jpg',
+                       console.log ("profileImageUrl: "+profile?.profileImageUrl), //| 'https://example.com/profile.jpg',
                        console.log ("education:"+ profile?.education),
                        console.log ("experience:" +profile?.experience),
-                       console.log ("portfolio_url:" +profile?.portfolioUrl) //'https://example.com/portfolio'
+                       console.log ("portfolioUrl:" +profile?.portfolioUrl) //'https://example.com/portfolio'
 
       const response = await fetch(`${API_GATEWAY_URL}/api/users/me/profile`, {
                     method: 'POST',

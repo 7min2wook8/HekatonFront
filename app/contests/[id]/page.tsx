@@ -157,7 +157,6 @@ export default function ContestDetailPage() {
   const handleLike = () => {
     if (!isAuthenticated) {
       toast.warning("로그인이 필요합니다.")
-      router.push("/login")
       return
     }
 
@@ -186,6 +185,10 @@ export default function ContestDetailPage() {
         if (!exists) {
           favorites.push(newFavorite);
         }
+        setShowLikeNotification(true);
+        setTimeout(() => {
+          setShowLikeNotification(false);
+        }, 1500);
       } else {
         // Remove from favorites
         favorites = favorites.filter((fav: any) => fav.id !== contest.id);

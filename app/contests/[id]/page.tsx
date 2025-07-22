@@ -38,8 +38,6 @@ export default function ContestDetailPage() {
   const [contest, setContest] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showLikeNotification, setShowLikeNotification] = useState(false);
-
   const API_GATEWAY_URL = "http://localhost:8080";
 
   // API 호출부
@@ -77,50 +75,16 @@ export default function ContestDetailPage() {
     fetchContest();
   }, [params.id]);
 
-  //즐겨찾기 컨트롤
-  const handleLike = () => {
-    // 로그인 상태 확인
+  const handleLike = async () => {
     if (!isAuthenticated) {
       toast.warning("로그인이 필요합니다.");
       return;
     }
     if (!contest) return;
-    // 좋아요 상태 토글(하단에 사용)
+
     const newIsLiked = !contest.isLiked;
 
-    // This is a mock implementation. In a real app, you'd call an API.
-    try {
-      if (!user || !user.id) {
-        throw new Error("User not authenticated or user ID not available.");
-      }
-      const localStorageKey = `favoriteContests_${user.id}`;
-      const storedFavorites = localStorage.getItem(localStorageKey);
-      let favorites = storedFavorites ? JSON.parse(storedFavorites) : [];
-
-      if (newIsLiked) {
-        const newFavorite = {
-          id: contest.id,
-          title: contest.title,
-          category: contest.category,
-          organizer: contest.organizer,
-          region: contest.region,
-          deadline: contest.registration_deadline,
-        };
-        if (!favorites.some((fav: any) => fav.id === newFavorite.id)) {
-          favorites.push(newFavorite);
-        }
-        setShowLikeNotification(true);
-        setTimeout(() => setShowLikeNotification(false), 1500);
-      } else {
-        favorites = favorites.filter((fav: any) => fav.id !== contest.id);
-      }
-
-      localStorage.setItem(localStorageKey, JSON.stringify(favorites));
-    } catch (e) {
-      console.error("Failed to update favorites in localStorage", e);
-      toast.error("즐겨찾기 업데이트에 실패했습니다.");
-    }
-
+    // Optimistically update UI first for better user experience
     setContest((prev: any) => ({
       ...prev,
       isLiked: newIsLiked,
@@ -128,6 +92,43 @@ export default function ContestDetailPage() {
         ? (prev.likeCount || 0) + 1
         : (prev.likeCount || 1) - 1,
     }));
+
+    try {
+      const method = newIsLiked ? "POST" : "DELETE";
+      const endpoint = newIsLiked
+        ? `${API_GATEWAY_URL}/api/contests/favorite/${params.id}/favoritesAdd`
+        : `${API_GATEWAY_URL}/api/contests/favorite/${params.id}/favoritesRemove`;
+
+      const response = await fetch(endpoint, {
+        method: method,
+        credentials: "include", // 세션 쿠키 전송을 위함
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({}), // 빈 본문을 추가하여 Content-Length 헤더 등을 보장
+      });
+
+      if (!response.ok) {
+        // 실패 시 UI를 원래대로 되돌립니다.
+        throw new Error("서버 응답이 올바르지 않습니다.");
+      }
+
+      toast.success(
+        newIsLiked ? "즐겨찾기에 추가했습니다." : "즐겨찾기에서 삭제했습니다."
+      );
+    } catch (error) {
+      console.error("즐겨찾기 업데이트 실패:", error);
+      toast.error("즐겨찾기 업데이트에 실패했습니다.");
+
+      // Revert UI on failure
+      setContest((prev: any) => ({
+        ...prev,
+        isLiked: !newIsLiked,
+        likeCount: newIsLiked
+          ? (prev.likeCount || 1) - 1
+          : (prev.likeCount || 0) + 1,
+      }));
+    }
   };
 
   const handleApply = () => {
@@ -263,11 +264,6 @@ export default function ContestDetailPage() {
                       <Share2 className="w-4 h-4" />
                     </Button>
                   </div>
-                  {showLikeNotification && (
-                    <div className="bg-black text-white text-xs px-2 py-1 rounded-md">
-                      즐겨찾기에 추가되었습니다!
-                    </div>
-                  )}
                 </div>
               </div>
 

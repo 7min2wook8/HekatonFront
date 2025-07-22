@@ -84,7 +84,6 @@ export default function ContestDetailPage() {
 
     const newIsLiked = !contest.isLiked;
 
-    // Optimistically update UI first for better user experience
     setContest((prev: any) => ({
       ...prev,
       isLiked: newIsLiked,
@@ -98,7 +97,7 @@ export default function ContestDetailPage() {
       const endpoint = newIsLiked
         ? `${API_GATEWAY_URL}/api/contests/favorite/${params.id}/favoritesAdd`
         : `${API_GATEWAY_URL}/api/contests/favorite/${params.id}/favoritesRemove`;
-
+      console.log('Favorite API Call:', {params, method})
       const response = await fetch(endpoint, {
         method: method,
         credentials: "include", // 세션 쿠키 전송을 위함
@@ -108,6 +107,7 @@ export default function ContestDetailPage() {
         body: JSON.stringify({}), // 빈 본문을 추가하여 Content-Length 헤더 등을 보장
       });
 
+      console.log(response);
       if (!response.ok) {
         // 실패 시 UI를 원래대로 되돌립니다.
         throw new Error("서버 응답이 올바르지 않습니다.");

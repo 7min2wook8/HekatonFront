@@ -42,6 +42,7 @@ export default function ContestDetailPage() {
 
   const API_GATEWAY_URL = "http://localhost:8080";
 
+  // API 호출부
   useEffect(() => {
     const fetchContest = async () => {
       if (!params.id) return;
@@ -76,13 +77,15 @@ export default function ContestDetailPage() {
     fetchContest();
   }, [params.id]);
 
+  //즐겨찾기 컨트롤
   const handleLike = () => {
+    // 로그인 상태 확인
     if (!isAuthenticated) {
       toast.warning("로그인이 필요합니다.");
       return;
     }
     if (!contest) return;
-
+    // 좋아요 상태 토글(하단에 사용)
     const newIsLiked = !contest.isLiked;
 
     // This is a mock implementation. In a real app, you'd call an API.
@@ -200,6 +203,7 @@ export default function ContestDetailPage() {
     );
   }
   // 여기까지 기능 요소 (JS)
+  
   // 이 아래부터 실제 구현되는 페이지 구성
   return (
     <div className="min-h-screen bg-gray-50">

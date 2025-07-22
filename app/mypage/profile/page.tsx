@@ -14,7 +14,7 @@ import { X, Plus, Upload, Save, ArrowLeft, CheckCircle, User } from "lucide-reac
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 import ProtectedRoute from "@/components/protected-route"
-import { useAuth } from "@/contexts/auth-context"
+import { Skills, useAuth } from "@/contexts/auth-context"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
@@ -23,11 +23,17 @@ const defaultImage = "/placeholder.svg"
 
 function ProfileEditContent() {
 
-  const {profile, viewProfile, saveProfile, setProfile, isAuthenticated, user, updateUser, userSkills, viewUserSkills, updateUserSkills, skills, getSkills } = useAuth()
+  const { profile, viewProfile, saveProfile, setProfile, isAuthenticated, user, updateUser, userSkills, viewUserSkills, updateUserSkills, getSkills, arraySkills } = useAuth()
   const [newInterest, setNewInterest] = useState("")
-  const [selectSkill, setSelectSkill] = useState<typeof skills>([])
+  const [selectSkill, setSelectSkill] = useState<Skills[]>([]); // 빈 Skills 배열로 초기화
   const [isLoading, setIsLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+
+
+
+  const [isSelectOpen, setIsSelectOpen] = useState(false); // Select 컴포넌트의 열림 상태를 관리하는 새 상태
+
+
   const router = useRouter()
   
   useEffect(() => {
@@ -38,10 +44,10 @@ function ProfileEditContent() {
 
     // 이 useEffect는 AuthProvider에서 기술 스택이 가져와지고 설정된 후 올바르게 로깅될 것입니다.
   useEffect(() => {
-    console.log("현재 skills 상태:", skills);
+    console.log("현재 skills 상태:", arraySkills);
     // 여기에 사용자의 기존 기술을 미리 선택하도록 설정할 수 있습니다.
     // 예: setSelectSkill(userSkills?.map(us => skills.find(s => s.id === us.skillId)).filter(Boolean) as Skills[]);
-  }, [skills]);
+  }, [arraySkills]);
 
   
 
@@ -114,14 +120,11 @@ function ProfileEditContent() {
   //   })
   // }
 
-  const addSkill = (skill: string) => {
-    // if (skill && !userSkills?.includes(skill)) {
-    //   updateUserSkills({
-    //     ...profile,
-    //     skills: [...profile.skills, skill],
-    //   })
-    // }
-    // setNewSkill(null)
+  const addSkill = (skillToAdd: Skills) => {
+
+     if (!selectSkill.some(s => s.id === skillToAdd.id)) {
+      setSelectSkill((prev) => [...prev, skillToAdd]);
+    }
   }
 
   const removeSkill = (id: string) => {
@@ -323,11 +326,24 @@ function ProfileEditContent() {
                 
                 <div className="flex gap-2">
                   <Select 
-                  // value={selectSkill?[0]. ?? ""} 
+                  // 1. open 상태를 직접 관리
+                  open={isSelectOpen}
+                  // 2. onOpenChange를 사용하여 상태 변경을 감지
+                  onOpenChange={setIsSelectOpen}
+
                   onValueChange={(skillName: string) => {
-                      const skill = skills?.find((s) => s.name == skillName);
-                      //if(skill)
-                        //setSelectSkill(skill);
+                      const foundSkill = arraySkills.find((s) => s.name === skillName);
+                      if (foundSkill) {
+                        addSkill(foundSkill); // 찾은 Skills 객체를 addSkill에 전달
+
+                        // --- 이 부분이 핵심입니다 ---
+                        // 아이템을 선택한 후에도 Select가 열려있도록 강제합니다.
+                        // onValueChange가 발생한 후 Select 내부적으로 닫히려고 할 수 있으므로,
+                        // 명시적으로 다시 열린 상태로 설정해 줍니다.
+                        setIsSelectOpen(true);
+                        
+                      }
+                      console.log(isSelectOpen)
                     }}>
                       
                     <SelectTrigger className="flex-1">
@@ -335,7 +351,7 @@ function ProfileEditContent() {
                     </SelectTrigger>
                     <SelectContent>
                       {/*모든 스킬 불러옴*/}
-                      {skills?.map((skill) => (
+                      {arraySkills?.map((skill) => (
                           <SelectItem key={skill.id} value={skill.name}>
                             {skill.name}
                           </SelectItem>
@@ -420,6 +436,7 @@ function ProfileEditContent() {
     </div>
   )
 }
+
 
 export default function ProfileEditPage() {
   return (

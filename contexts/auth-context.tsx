@@ -28,7 +28,7 @@ interface UserSkills{
   created_at : string
 }
 
-interface Skills{  
+export interface Skills{  
   id: string
   name : string
   category : string  
@@ -50,7 +50,7 @@ interface AuthContextType {
   user: User | null 
   profile: Profile | null 
   userSkills : UserSkills[]
-  skills : Skills[]
+  arraySkills : Skills[]
   isLoading: boolean
   isAuthenticated: boolean
 
@@ -65,7 +65,7 @@ interface AuthContextType {
   updateUserSkills: React.Dispatch<React.SetStateAction< UserSkills[] | null>>
   getSkills : () => Promise<{ success: boolean; message?: string; } | null >
   getNcsCategory : () => Promise<{success:boolean; message?: string} | null >
-
+  
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -76,7 +76,8 @@ const API_GATEWAY_URL = 'http://localhost:8080'; // api-gateway 호출
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)  
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [skills, setSkills] = useState< Skills[]>([])
+  const [arraySkills, setArraySkills] = useState<Skills[]>([])
+  const [skills, setSkills] = useState<Skills>()
   const [userSkills, setUserSkills] = useState<UserSkills[]>([]) 
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
@@ -415,7 +416,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: skill.description || "",
       }));
 
-      setSkills(allSkills)
+      setArraySkills(allSkills)
 
       return { success : true, message: "기술 데이터를 성공적으로 불러왔습니다." }
 
@@ -433,7 +434,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     profile,
     userSkills, // 실제 userSkills 상태 사용
-    skills, // 실제 skills 상태 사용
+    arraySkills,    
     isLoading,
     isAuthenticated: !!user,
     signUp,

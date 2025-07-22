@@ -32,7 +32,7 @@ import Footer from "@/components/footer";
 import { useAuth } from "@/contexts/auth-context";
 
 export default function ContestDetailPage() {
-  const params = useParams();
+  const params = useParams(); // id
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
   const [contest, setContest] = useState<any>(null);
@@ -164,6 +164,7 @@ export default function ContestDetailPage() {
     return "bg-gray-100 text-gray-800";
   };
 
+  // 남은 일수 계산
   const getDaysLeft = () => {
     if (!contest?.registrationDeadline) return 0;
     const deadline = new Date(contest.registrationDeadline);

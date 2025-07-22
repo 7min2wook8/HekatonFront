@@ -26,18 +26,31 @@ import {
   AlertCircle,
   User,
   Send,
+  Trash2,
 } from "lucide-react";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { useAuth } from "@/contexts/auth-context";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function ContestDetailPage() {
   const params = useParams(); // id
   const router = useRouter();
-  const { user, isAuthenticated } = useAuth();
+  const {user, isAuthenticated } = useAuth();
   const [contest, setContest] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false); // 삭제 확인 다이얼로그 상태
   const API_GATEWAY_URL = "http://localhost:8080";
 
   // API 호출부
@@ -140,6 +153,34 @@ export default function ContestDetailPage() {
     toast.info("지원 기능은 현재 준비 중입니다.");
   };
 
+  const handleDeleteContest = async () => {
+    console.log("현재 로그인 사용자:", user)
+    console.log("공모전 정보:", contest)
+    // if (!contest || !user || contest.userId !== user.id) {
+    //   toast.error("삭제 권한이 없습니다.");
+    //   return;
+    // }
+
+    try {
+      const response = await fetch(`${API_GATEWAY_URL}/api/contests/${params.id}/deactivate`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("공모전 삭제에 실패했습니다.");
+      }
+
+      toast.success("공모전이 성공적으로 삭제되었습니다.");
+      router.push("/contests"); // 삭제 후 목록 페이지로 이동
+    } catch (error: any) {
+      console.error("공모전 삭제 중 오류 발생:", error);
+      toast.error(error.message || "공모전 삭제 중 오류가 발생했습니다.");
+    } finally {
+      setShowDeleteConfirm(false); // 다이얼로그 닫기
+    }
+  };
+
   const handleShare = async () => {
     if (!contest) return;
     const shareData = {
@@ -218,6 +259,35 @@ export default function ContestDetailPage() {
             </Button>
           </Link>
         </div>
+
+        {user && user.id === user.id && (
+          <div className="mb-6">
+            <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm">
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  공모전 삭제
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>정말로 이 공모전을 삭제하시겠습니까?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    이 작업은 되돌릴 수 없습니다. 공모전과 관련된 모든 데이터가 영구적으로 삭제됩니다.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>취소</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteContest}>
+                    삭제
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
+
+        
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">

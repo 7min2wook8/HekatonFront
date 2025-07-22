@@ -156,6 +156,7 @@ export default function ContestDetailPage() {
   const handleDeleteContest = async () => {
     console.log("현재 로그인 사용자:", user)
     console.log("공모전 정보:", contest)
+    // 생성된 로직: 유저 아이디 = 콘테스트 아이디로 판단하고 만든거같음. 수정 필요
     // if (!contest || !user || contest.userId !== user.id) {
     //   toast.error("삭제 권한이 없습니다.");
     //   return;

@@ -18,71 +18,53 @@ import { useAuth } from "@/contexts/auth-context"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
-const availableInterests = [
-  "창업",
-  "IT",
-  "디자인",
-  "마케팅",
-  "광고",
-  "사회",
-  "환경",
-  "교육",
-  "문화",
-  "예술",
-  "스포츠",
-  "의료",
-  "금융",
-  "정책",
-]
-
-const availableSkills = [
-  "React",
-  "Vue.js",
-  "Angular",
-  "Node.js",
-  "Python",
-  "Java",
-  "JavaScript",
-  "TypeScript",
-  "UI/UX",
-  "Figma",
-  "Photoshop",
-  "Illustrator",
-  "Marketing",
-  "SEO",
-  "Data Analysis",
-  "Machine Learning",
-]
-
 
 const defaultImage = "/placeholder.svg"
 
 function ProfileEditContent() {
 
-  const { viewProfile, saveProfile, setProfile, isAuthenticated, user, updateUser, profile } = useAuth()
+  const {profile, viewProfile, saveProfile, setProfile, isAuthenticated, user, updateUser, userSkills, viewUserSkills, updateUserSkills, skills, getSkills } = useAuth()
   const [newInterest, setNewInterest] = useState("")
-  const [newSkill, setNewSkill] = useState("")
+  const [selectSkill, setSelectSkill] = useState<typeof skills>([])
   const [isLoading, setIsLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const router = useRouter()
   
- useEffect(() => {
-  const fetchProfile = async () => {
+  useEffect(() => {
+    if (isAuthenticated && user) { // 인증되었고 사용자가 존재할 때만 데이터 가져오기
+      fetchUserData();
+    }
+  }, [isAuthenticated, user]); // isAuthenticated와 user에 의존
+
+    // 이 useEffect는 AuthProvider에서 기술 스택이 가져와지고 설정된 후 올바르게 로깅될 것입니다.
+  useEffect(() => {
+    console.log("현재 skills 상태:", skills);
+    // 여기에 사용자의 기존 기술을 미리 선택하도록 설정할 수 있습니다.
+    // 예: setSelectSkill(userSkills?.map(us => skills.find(s => s.id === us.skillId)).filter(Boolean) as Skills[]);
+  }, [skills]);
+
+  
+
+  const fetchUserData = async () => {
     if (user) {
-      const result = await viewProfile();  // 비동기 호출
-      //console.log(profile)
-      if (result?.success) {
-        console.log("프로필 불러오기 성공:", result.message);
+      const profileResult1 = await viewProfile();  // 비동기 호출
+
+      const userSkillsResult = await viewUserSkills();  // 비동기 호출
+      
+      const skillsResult = await getSkills();
+
+      if (profileResult1?.success && userSkillsResult?.success && skillsResult?.success) {
+        console.log("프로필 불러오기 성공:");
+
+        //setNewSkill(skillsResult.skills)
 
       } else {
-        console.warn("프로필 불러오기 실패:", result?.message);
+        console.warn("프로필 불러오기 실패:");
       }
     }
+    else
+      router.push("/")
   };
-
-  fetchProfile();
-}, []);  // user가 설정될 때 실행
-
   // 프로필 저장 핸들러
   // 이 함수는 실제 API 호출을 시뮬레이션합니다.
   const handleSave = async () => {
@@ -132,22 +114,19 @@ function ProfileEditContent() {
   //   })
   // }
 
-  // const addSkill = (skill: string) => {
-  //   if (skill && !profile.skills.includes(skill)) {
-  //     setProfile({
-  //       ...profile,
-  //       skills: [...profile.skills, skill],
-  //     })
-  //   }
-  //   setNewSkill("")
-  // }
+  const addSkill = (skill: string) => {
+    // if (skill && !userSkills?.includes(skill)) {
+    //   updateUserSkills({
+    //     ...profile,
+    //     skills: [...profile.skills, skill],
+    //   })
+    // }
+    // setNewSkill(null)
+  }
 
-  // const removeSkill = (skill: string) => {
-  //   setProfile({
-  //     ...profile,
-  //     skills: profile.skills.filter((s) => s !== skill),
-  //   })
-  // }
+  const removeSkill = (id: string) => {
+    //setSelectSkill((prev) => prev.filter((s) => s.id !== id));
+  }
 
   if (!user) return null
 
@@ -231,15 +210,15 @@ function ProfileEditContent() {
                     />
                     <p className="text-xs text-gray-500">이메일은 변경할 수 없습니다.</p>
                   </div>
-                  {/* <div className="space-y-2">
+                  <div className="space-y-2">
                     <Label htmlFor="phone">전화번호</Label>
                     <Input
                       id="phone"
                       value={user.phone_number}
-                      onChange={(e) => updateUser({ ...thisProfile, phone_number: e.target.value })}
+                      onChange={(e) => updateUser({ ...user, phone_number: e.target.value })}
                       placeholder="010-0000-0000"
                     />
-                  </div> */}
+                  </div>
                   {/* <div className="space-y-2">
                     <Label htmlFor="location">지역</Label>
                     <Select
@@ -326,42 +305,49 @@ function ProfileEditContent() {
             </Card> */}
 
             {/* 기술 스택 */}
-            {/* <Card>
+            <Card>
               <CardHeader>
                 <CardTitle>기술 스택</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex flex-wrap gap-2">
-                  {profile.skills.map((skill) => (
-                    <Badge key={skill} variant="outline" className="flex items-center gap-1">
-                      {skill}
-                      <button onClick={() => removeSkill(skill)} className="ml-1 hover:bg-gray-300 rounded-full p-0.5">
+                   {selectSkill?.map((skill) => (
+                    <Badge key={skill.id} variant="outline" className="flex items-center gap-1">
+                      {skill.name}
+                      <button onClick={() => removeSkill(skill.id)} className="ml-1 hover:bg-gray-300 rounded-full p-0.5">
                         <X className="w-3 h-3" />
                       </button>
                     </Badge>
                   ))}
                 </div>
+                
                 <div className="flex gap-2">
-                  <Select value={newSkill} onValueChange={setNewSkill}>
+                  <Select 
+                  // value={selectSkill?[0]. ?? ""} 
+                  onValueChange={(skillName: string) => {
+                      const skill = skills?.find((s) => s.name == skillName);
+                      //if(skill)
+                        //setSelectSkill(skill);
+                    }}>
+                      
                     <SelectTrigger className="flex-1">
                       <SelectValue placeholder="기술 스택 선택" />
                     </SelectTrigger>
                     <SelectContent>
-                      {availableSkills
-                        .filter((skill) => !profile.skills.includes(skill))
-                        .map((skill) => (
-                          <SelectItem key={skill} value={skill}>
-                            {skill}
+                      {/*모든 스킬 불러옴*/}
+                      {skills?.map((skill) => (
+                          <SelectItem key={skill.id} value={skill.name}>
+                            {skill.name}
                           </SelectItem>
                         ))}
                     </SelectContent>
                   </Select>
-                  <Button onClick={() => addSkill(newSkill)} disabled={!newSkill} size="sm">
+                  {/* <Button onClick={() => addSkill("")} disabled={!newSkill} size="sm">
                     <Plus className="w-4 h-4" />
-                  </Button>
+                  </Button> */}
                 </div>
               </CardContent>
-            </Card> */}
+            </Card>
 
             {/* 추가 정보 */}
             <Card>

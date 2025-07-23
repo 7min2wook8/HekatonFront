@@ -89,48 +89,54 @@ function ContestCreateContent() {
   
   const API_GATEWAY_URL = 'http://localhost:8080';
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError(null)
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setIsLoading(true);
+  setError(null);
 
-    const submissionData = {
-      ...formData,
-      maxParticipants: formData.maxParticipants ? parseInt(formData.maxParticipants, 10) : 0,
-      // 날짜 필드 추가
-      startDate: formData.startDate,
-      endDate: formData.endDate,
-      registrationDeadline: formData.registrationDeadline,
-    };
+  // 날짜 필드에 시간 정보 (자정) 추가
+  const formatDateTime = (dateString: string) => {
+    if (!dateString) return null;
+    // YYYY-MM-DD 형식에 T00:00:00을 붙여 LocalDateTime이 파싱할 수 있는 형식으로 만듦
+    return `${dateString}T00:00:00`;
+  };
 
-    try {
-      const response = await fetch(`${API_GATEWAY_URL}/api/contests`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(submissionData),
-      });
+  const submissionData = {
+    ...formData,
+    maxParticipants: formData.maxParticipants ? parseInt(formData.maxParticipants, 10) : 0,
+    startDate: formatDateTime(formData.startDate),
+    endDate: formatDateTime(formData.endDate),
+    registrationDeadline: formatDateTime(formData.registrationDeadline),
+  };
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'An unknown error occurred' }));
-        throw new Error(errorData.message || 'Failed to create contest.');
-      }
+  try {
+    const response = await fetch(`${API_GATEWAY_URL}/api/contests`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify(submissionData),
+    });
 
-      console.log("Contest created successfully:", await response.json());
-      setSuccess(true)
-
-      setTimeout(() => {
-        router.push("/contests")
-      }, 3000)
-    } catch (error: any) {
-      console.error("Error creating contest:", error)
-      setError(error.message)
-    } finally {
-      setIsLoading(false)
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: '알 수 없는 오류가 발생했습니다.' }));
+      throw new Error(errorData.message || '공모전 생성에 실패했습니다.');
     }
+
+    console.log("Contest created successfully:", await response.json());
+    setSuccess(true);
+
+    setTimeout(() => {
+      router.push("/contests");
+    }, 3000);
+  } catch (error: any) {
+    console.error("Error creating contest:", error);
+    setError(error.message);
+  } finally {
+    setIsLoading(false);
   }
+};
 
   const addTag = () => {
     if (newTag && !formData.tags.includes(newTag)) {

@@ -252,17 +252,15 @@ export default function ContestDetailPage() {
     <div className="min-h-screen bg-gray-50">
       <Header />
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-6">
+        <div className="mb-6 flex justify-between items-center">
           <Link href="/contests">
             <Button variant="outline" size="sm">
               <ArrowLeft className="w-4 h-4 mr-2" />
               공모전 목록으로
             </Button>
           </Link>
-        </div>
 
-        {user && user.id === user.id && (
-          <div className="mb-6">
+          {user && user.id === user.id && (
             <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" size="sm">
@@ -285,8 +283,8 @@ export default function ContestDetailPage() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-          </div>
-        )}
+          )}
+        </div>
 
         
 

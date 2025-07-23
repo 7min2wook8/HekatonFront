@@ -28,6 +28,7 @@ export default function ContestsPage() {
 
   const API_GATEWAY_URL = 'http://localhost:8080';
 
+  //카테고리 호출
   useEffect(() => {
     const fetchCategories = async () => {
       setIsCategoriesLoading(true);
@@ -62,6 +63,7 @@ export default function ContestsPage() {
     fetchCategories();
   }, []);
 
+  //동적 검색
   useEffect(() => {
     const fetchContests = async () => {
       setIsLoading(true);
@@ -75,6 +77,7 @@ export default function ContestsPage() {
         params.append('keyword', searchTerm);
       }
       let categoryId = null;
+      //전체가 아닐 경우 선택된 카테고리 별로 분류
       if (selectedCategory !== "전체") {
         const foundCategory = categories.find(cat => cat.name === selectedCategory);
         if (foundCategory) {

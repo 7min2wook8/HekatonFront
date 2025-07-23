@@ -55,6 +55,7 @@ function ContestCreateContent() {
 
   const API_GATEWAY_URL = 'http://localhost:8080';
 
+  //카테고리 API 호출
   useEffect(() => {
     const fetchCategories = async () => {
       setIsCategoriesLoading(true);

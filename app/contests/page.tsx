@@ -185,7 +185,7 @@ export default function ContestsPage() {
                     <>
                       <SelectItem value="전체">전체 카테고리</SelectItem>
                       {categories.map((category) => (
-                        <SelectItem key={category.name} value={category.name}>
+                        <SelectItem key={category.id} value={category.name}>
                           {category.name}
                         </SelectItem>
                       ))}

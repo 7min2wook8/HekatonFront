@@ -317,7 +317,7 @@ function ContestEditContent() {
         {/* 헤더 */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
-            <Link href="/contests">
+            <Link href={`/contests/${contestId}`}>
               <Button variant="outline" size="sm">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 돌아가기

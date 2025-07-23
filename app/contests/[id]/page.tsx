@@ -61,7 +61,7 @@ export default function ContestDetailPage() {
       setError(null);
 
       try {
-        // 기본 공모전 정보, 즐겨찾기 상태, 즐겨찾기 수를 병렬로 가져옵니다.
+        // 기본 공모전 정보
         const contestPromise = fetch(
           `${API_GATEWAY_URL}/api/contests/${params.id}`,
           { credentials: "include" }
@@ -69,7 +69,7 @@ export default function ContestDetailPage() {
           if (!res.ok) throw new Error("공모전 정보를 가져오지 못했습니다.");
           return res.json();
         });
-
+        //즐겨찾기 상태
         const isFavoritePromise = isAuthenticated
           ? fetch(
               `${API_GATEWAY_URL}/api/contests/favorite/${params.id}/isfavorites`,
@@ -77,6 +77,7 @@ export default function ContestDetailPage() {
             ).then((res) => (res.ok ? res.json() : false))
           : Promise.resolve(false);
 
+        // 즐겨찾기 수를 병렬로 가져옵니다.
         const favoritesCountPromise = fetch(
           `${API_GATEWAY_URL}/api/contests/favorite/${params.id}/favoritesCount`,
           { credentials: "include" } // 인증 정보 추가
@@ -100,6 +101,7 @@ export default function ContestDetailPage() {
     fetchContestDetails();
   }, [params.id, isAuthenticated]);
 
+  //사용자 로그인 여부 확인
   const handleLike = async () => {
     if (!isAuthenticated) {
       toast.warning("로그인이 필요합니다.");
@@ -159,6 +161,7 @@ export default function ContestDetailPage() {
     }
   };
 
+  //지원하기  
   const handleApply = () => {
     if (!isAuthenticated) {
       router.push("/login");
@@ -168,6 +171,7 @@ export default function ContestDetailPage() {
     toast.info("지원 기능은 현재 준비 중입니다.");
   };
 
+  //공모전 삭제
   const handleDeleteContest = async () => {
     console.log("현재 로그인 사용자:", user);
     console.log("공모전 정보:", contest);
@@ -200,6 +204,7 @@ export default function ContestDetailPage() {
     }
   };
 
+  //공유하기
   const handleShare = async () => {
     if (!contest) return;
     const shareData = {
@@ -220,6 +225,7 @@ export default function ContestDetailPage() {
     }
   };
 
+  //마감 상태 컬러표기(미사용)
   const getStatusColor = (status?: string) => {
     if (!status) return "bg-gray-100 text-gray-800";
     if (status.includes("마감")) return "bg-red-100 text-red-800";

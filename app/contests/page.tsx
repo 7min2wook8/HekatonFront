@@ -21,11 +21,47 @@ export default function ContestsPage() {
   const [selectedStatus, setSelectedStatus] = useState("전체")
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
   
+  const [categories, setCategories] = useState<any[]>([]);
+  const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
+
   const API_GATEWAY_URL = 'http://localhost:8080';
 
-  
+  useEffect(() => {
+    const fetchCategories = async () => {
+      setIsCategoriesLoading(true);
+      setCategoriesError(null);
+      try {
+        const response = await fetch(`${API_GATEWAY_URL}/api/categories`, {
+          method: 'GET',
+          credentials: 'include',
+        });
+        if (!response.ok) {
+          throw new Error("카테고리 목록을 불러오는 데 실패했습니다.");
+        }
+        const data = await response.json();
+        console.log(data)
+        // API 응답에서 실제 카테고리 배열을 추출합니다.
+        const categoriesArray = Array.isArray(data) ? data : data.content;
+
+        if (Array.isArray(categoriesArray)) {
+          setCategories(categoriesArray);
+        } else {
+          console.error("API로부터 받은 카테고리 데이터가 배열이 아닙니다:", data);
+          throw new Error("카테고리 데이터 형식이 올바르지 않습니다.");
+        }
+      } catch (error: any) {
+        setCategoriesError(error.message);
+        setCategories([]);
+      } finally {
+        setIsCategoriesLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
   useEffect(() => {
     const fetchContests = async () => {
       setIsLoading(true);
@@ -124,18 +160,25 @@ export default function ContestsPage() {
               </div>
 
               {/* 카테고리 필터 */}
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <Select value={selectedCategory} onValueChange={setSelectedCategory} disabled={isCategoriesLoading}>
                 <SelectTrigger>
                   <SelectValue placeholder="카테고리" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="전체">전체 카테고리</SelectItem>
-                  <SelectItem value="창업">창업</SelectItem>
-                  <SelectItem value="광고">광고</SelectItem>
-                  <SelectItem value="IT">IT</SelectItem>
-                  <SelectItem value="사회">사회</SelectItem>
-                  <SelectItem value="디자인">디자인</SelectItem>
-                  <SelectItem value="정책">정책</SelectItem>
+                  {isCategoriesLoading ? (
+                    <SelectItem value="loading" disabled>불러오는 중...</SelectItem>
+                  ) : categoriesError ? (
+                    <SelectItem value="error" disabled>카테고리 로딩 실패</SelectItem>
+                  ) : (
+                    <>
+                      <SelectItem value="전체">전체 카테고리</SelectItem>
+                      {categories.map((category) => (
+                        <SelectItem key={category.name} value={category.name}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
                 </SelectContent>
               </Select>
 

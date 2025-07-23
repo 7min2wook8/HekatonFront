@@ -46,7 +46,7 @@ import {
 export default function ContestDetailPage() {
   const params = useParams(); // id
   const router = useRouter();
-  const {user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [contest, setContest] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -55,28 +55,40 @@ export default function ContestDetailPage() {
 
   // API 호출부
   useEffect(() => {
-    const fetchContest = async () => {
+    const fetchContestDetails = async () => {
       if (!params.id) return;
-
       setIsLoading(true);
       setError(null);
 
       try {
-        const response = await fetch(
+        // 기본 공모전 정보, 즐겨찾기 상태, 즐겨찾기 수를 병렬로 가져옵니다.
+        const contestPromise = fetch(
           `${API_GATEWAY_URL}/api/contests/${params.id}`,
-          {
-            method: "GET",
-            credentials: "include",
-          }
-        );
+          { credentials: "include" }
+        ).then((res) => {
+          if (!res.ok) throw new Error("공모전 정보를 가져오지 못했습니다.");
+          return res.json();
+        });
 
-        if (!response.ok) {
-          throw new Error("네트워크 응답이 올바르지 않습니다.");
-        }
+        const isFavoritePromise = isAuthenticated
+          ? fetch(
+              `${API_GATEWAY_URL}/api/contests/favorite/${params.id}/isfavorites`,
+              { credentials: "include" }
+            ).then((res) => (res.ok ? res.json() : false))
+          : Promise.resolve(false);
 
-        const data = await response.json();
-        console.log("API 응답 데이터:", data); // 디버깅 로그 추가
-        setContest(data);
+        const favoritesCountPromise = fetch(
+          `${API_GATEWAY_URL}/api/contests/favorite/${params.id}/favoritesCount`,
+          { credentials: "include" } // 인증 정보 추가
+        ).then((res) => (res.ok ? res.json() : 0));
+
+        const [contestData, isLiked, likeCount] = await Promise.all([
+          contestPromise,
+          isFavoritePromise,
+          favoritesCountPromise,
+        ]);
+
+        setContest({ ...contestData, isLiked, likeCount });
       } catch (error: any) {
         console.error("공모전 데이터를 가져오는 중 오류 발생:", error);
         setError(error.message);
@@ -85,8 +97,8 @@ export default function ContestDetailPage() {
       }
     };
 
-    fetchContest();
-  }, [params.id]);
+    fetchContestDetails();
+  }, [params.id, isAuthenticated]);
 
   const handleLike = async () => {
     if (!isAuthenticated) {
@@ -97,12 +109,10 @@ export default function ContestDetailPage() {
 
     const newIsLiked = !contest.isLiked;
 
+    // UI를 먼저 업데이트하여 즉각적인 피드백을 제공합니다.
     setContest((prev: any) => ({
       ...prev,
       isLiked: newIsLiked,
-      likeCount: newIsLiked
-        ? (prev.likeCount || 0) + 1
-        : (prev.likeCount || 1) - 1,
     }));
 
     try {
@@ -110,20 +120,28 @@ export default function ContestDetailPage() {
       const endpoint = newIsLiked
         ? `${API_GATEWAY_URL}/api/contests/favorite/${params.id}/favoritesAdd`
         : `${API_GATEWAY_URL}/api/contests/favorite/${params.id}/favoritesRemove`;
-      console.log('Favorite API Call:', {params, method})
+
       const response = await fetch(endpoint, {
         method: method,
-        credentials: "include", // 세션 쿠키 전송을 위함
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({}), // 빈 본문을 추가하여 Content-Length 헤더 등을 보장
+        body: JSON.stringify({}),
       });
 
-      console.log(response);
       if (!response.ok) {
-        // 실패 시 UI를 원래대로 되돌립니다.
         throw new Error("서버 응답이 올바르지 않습니다.");
+      }
+
+      // 서버로부터 최신 즐겨찾기 수를 다시 가져와 동기화합니다.
+      const favoritesCountResponse = await fetch(
+        `${API_GATEWAY_URL}/api/contests/favorite/${params.id}/favoritesCount`,
+        { credentials: "include" } // 인증 정보 추가
+      );
+      if (favoritesCountResponse.ok) {
+        const likeCount = await favoritesCountResponse.json();
+        setContest((prev: any) => ({ ...prev, likeCount }));
       }
 
       toast.success(
@@ -133,13 +151,10 @@ export default function ContestDetailPage() {
       console.error("즐겨찾기 업데이트 실패:", error);
       toast.error("즐겨찾기 업데이트에 실패했습니다.");
 
-      // Revert UI on failure
+      // 실패 시 UI를 원래 상태로 되돌립니다.
       setContest((prev: any) => ({
         ...prev,
         isLiked: !newIsLiked,
-        likeCount: newIsLiked
-          ? (prev.likeCount || 1) - 1
-          : (prev.likeCount || 0) + 1,
       }));
     }
   };
@@ -154,8 +169,8 @@ export default function ContestDetailPage() {
   };
 
   const handleDeleteContest = async () => {
-    console.log("현재 로그인 사용자:", user)
-    console.log("공모전 정보:", contest)
+    console.log("현재 로그인 사용자:", user);
+    console.log("공모전 정보:", contest);
     // 생성된 로직: 유저 아이디 = 콘테스트 아이디로 판단하고 만든거같음. 수정 필요
     // if (!contest || !user || contest.userId !== user.id) {
     //   toast.error("삭제 권한이 없습니다.");
@@ -163,10 +178,13 @@ export default function ContestDetailPage() {
     // }
 
     try {
-      const response = await fetch(`${API_GATEWAY_URL}/api/contests/${params.id}/deactivate`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${API_GATEWAY_URL}/api/contests/${params.id}/deactivate`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
 
       if (!response.ok) {
         throw new Error("공모전 삭제에 실패했습니다.");
@@ -246,7 +264,7 @@ export default function ContestDetailPage() {
     );
   }
   // 여기까지 기능 요소 (JS)
-  
+
   // 이 아래부터 실제 구현되는 페이지 구성
   return (
     <div className="min-h-screen bg-gray-50">
@@ -261,7 +279,10 @@ export default function ContestDetailPage() {
           </Link>
 
           {user && user.id === user.id && (
-            <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+            <AlertDialog
+              open={showDeleteConfirm}
+              onOpenChange={setShowDeleteConfirm}
+            >
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" size="sm">
                   <Trash2 className="w-4 h-4 mr-2" />
@@ -270,9 +291,12 @@ export default function ContestDetailPage() {
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>정말로 이 공모전을 삭제하시겠습니까?</AlertDialogTitle>
+                  <AlertDialogTitle>
+                    정말로 이 공모전을 삭제하시겠습니까?
+                  </AlertDialogTitle>
                   <AlertDialogDescription>
-                    이 작업은 되돌릴 수 없습니다. 공모전과 관련된 모든 데이터가 영구적으로 삭제됩니다.
+                    이 작업은 되돌릴 수 없습니다. 공모전과 관련된 모든 데이터가
+                    영구적으로 삭제됩니다.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -285,8 +309,6 @@ export default function ContestDetailPage() {
             </AlertDialog>
           )}
         </div>
-
-        
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
@@ -469,8 +491,8 @@ export default function ContestDetailPage() {
                 </div>
               </CardContent>
             </Card>
-                  {/* 상금 */}
-            {(contest.prizeDescription) && (
+            {/* 상금 */}
+            {contest.prizeDescription && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
@@ -495,20 +517,16 @@ export default function ContestDetailPage() {
               </CardHeader>
               {/* 주최자 정보 */}
               <CardContent className="space-y-3">
-                  <div>
-                    <div className="font-medium">
-                      {contest.organizer}
-                    </div>
-                  </div>
-                  {/* 주최자 이메일(미구현) */}
+                <div>
+                  <div className="font-medium">{contest.organizer}</div>
+                </div>
+                {/* 주최자 이메일(미구현) */}
                 <div className="space-y-2 text-sm">
-                  {(contest.organizerEmail) && (
+                  {contest.organizerEmail && (
                     <div className="flex items-center">
                       <Mail className="w-4 h-4 mr-2 text-gray-400" />
                       <a
-                        href={`mailto:${
-                          contest.organizerEmail
-                        }`}
+                        href={`mailto:${contest.organizerEmail}`}
                         className="text-blue-600 hover:underline"
                       >
                         {contest.organizerEmail}
@@ -516,16 +534,14 @@ export default function ContestDetailPage() {
                     </div>
                   )}
                   {/* 주최자 전화번호(미구현) */}
-                  {(contest.organizerPhone) && (
+                  {contest.organizerPhone && (
                     <div className="flex items-center">
                       <Phone className="w-4 h-4 mr-2 text-gray-400" />
-                      <span>
-                        {contest.organizerPhone}
-                      </span>
+                      <span>{contest.organizerPhone}</span>
                     </div>
                   )}
                   {/* 주최자 웹사이트 */}
-                  {(contest.websiteUrl) && (
+                  {contest.websiteUrl && (
                     <div className="flex items-center">
                       <Globe className="w-4 h-4 mr-2 text-gray-400" />
                       <a
@@ -542,7 +558,7 @@ export default function ContestDetailPage() {
                 </div>
               </CardContent>
             </Card>
-                  {/* 태그(미구현) */}
+            {/* 태그(미구현) */}
             {contest.tags?.length > 0 && (
               <Card>
                 <CardHeader>

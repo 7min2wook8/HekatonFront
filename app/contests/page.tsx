@@ -74,8 +74,12 @@ export default function ContestsPage() {
       if (searchTerm) {
         params.append('keyword', searchTerm);
       }
+      let categoryId = null;
       if (selectedCategory !== "전체") {
-        params.append('category', selectedCategory);
+        const foundCategory = categories.find(cat => cat.name === selectedCategory);
+        if (foundCategory) {
+          categoryId = foundCategory.id;
+        }
       }
       if (selectedLocation !== "전체") {
         params.append('location', selectedLocation);
@@ -88,7 +92,12 @@ export default function ContestsPage() {
       // params.append('size', '10');
 
       try {
-        const response = await fetch(`${API_GATEWAY_URL}/api/contests?${params.toString()}&size=30`, {
+        let url = `${API_GATEWAY_URL}/api/contests?${params.toString()}&size=30`;
+
+      if (categoryId) {
+        url = `${API_GATEWAY_URL}/api/categories/${categoryId}/contests?${params.toString()}&size=30`;
+      }
+        const response = await fetch(url, {
           method: 'GET',
           credentials: 'include',
         });

@@ -34,9 +34,8 @@ import { Profile, Skills, useAuth, UserSkills } from "@/contexts/auth-context"
 export default function SignupProfilePage() {
    const { viewProfile, saveProfile, isAuthenticated, user, 
      updateUser, viewUserSkills, saveUserSkills,  getSkills } = useAuth()
-   //const [newInterest, setNewInterest] = useState("")
+
    const [isLoading, setIsLoading] = useState(false)
-   //const [success, setSuccess] = useState(false)
  
    //선택된 스킬 데이터 저장
    const [selectSkill, setSelectSkill] = useState<Skills[]>([]); // 빈 Skills 배열로 초기화
@@ -60,15 +59,15 @@ export default function SignupProfilePage() {
    
    useEffect(() => {
      setIsLoading(true)
-     
- 
+      console.log("isAuthenticated " + isAuthenticated )
+      console.log("user " + user )
      if (isAuthenticated && user) { // 인증되었고 사용자가 존재할 때만 데이터 가져오기
        fetchUserData();     
      }else{
-      router.push("/")
+  
+      //router.push("/")
      }
        
- 
      setIsLoading(false)
      
      

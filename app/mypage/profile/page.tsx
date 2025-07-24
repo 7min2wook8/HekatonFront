@@ -51,7 +51,7 @@ function ProfileEditContent() {
   
   useEffect(() => {
     setIsLoading(true)
-    //setSuccess(false)
+    
 
     if (isAuthenticated && user) { // 인증되었고 사용자가 존재할 때만 데이터 가져오기
       fetchUserData();     
@@ -59,16 +59,9 @@ function ProfileEditContent() {
       router.push("/")
 
     setIsLoading(false)
-    //setSuccess(true)
+    
     
   }, [isAuthenticated, user]); // isAuthenticated와 user에 의존
-
-    // 이 useEffect는 AuthProvider에서 기술 스택이 가져와지고 설정된 후 올바르게 로깅될 것입니다.
-  useEffect(() => {
-    //console.log("현재 selectSkill 상태:", selectSkill);
-    // 여기에 사용자의 기존 기술을 미리 선택하도록 설정할 수 있습니다.
-    // 예: setSelectSkill(userSkills?.map(us => skills.find(s => s.id === us.skillId)).filter(Boolean) as Skills[]);
-  }, [selectSkill]);
 
   //프로필 및 스킬 정보를 가져옴
   const fetchUserData = async () => {

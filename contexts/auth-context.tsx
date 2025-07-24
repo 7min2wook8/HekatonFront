@@ -74,60 +74,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)    
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
+  useEffect(() => {
 
-  // 컴포넌트 마운트 시 저장된 세션 확인
-  // useEffect(() => {
-  //   const checkSession = () => {
-  //     try {
-  //       //const savedUser = localStorage.getItem("EqualLocal_user")
-  //       //const sessionExpiry = localStorage.getItem("EqualLocal_session_expiry")
+    console.log("AuthProvider : " + user)
+    //console.log("isAuthenticated : " + isAuthenticated)
+  },[user])
+  //컴포넌트 마운트 시 저장된 세션 확인
+  useEffect(() => {
+    const checkSession = () => {
+      try {
 
-  //       //if (savedUser && sessionExpiry) {
-  //         //const expiryTime = Number.parseInt(sessionExpiry)
-  //         //const currentTime = Date.now()
+        }
+       catch (error) {
 
-  //         //if (currentTime < expiryTime) {
-  //           // 세션이 유효한 경우
-  //           //setUser(JSON.parse(savedUser))
-  //         //} else {
-  //           // 세션이 만료된 경우
-  //           //localStorage.removeItem("EqualLocal_user")
-  //           //localStorage.removeItem("EqualLocal_session_expiry")
-  //         }
-  //       }
-  //     //} catch (error) {
-  //       //console.error("세션 확인 중 오류:", error)
-  //       //localStorage.removeItem("EqualLocal_user")
-  //       //localStorage.removeItem("EqualLocal_session_expiry")
-  //     //} finally {
-  //       //setIsLoading(false)
-  //     //}
-  //   //}
+      
+      } finally {
+       
+      }
 
-  //   //checkSession()
-  // }, [])
+    //checkSession()
+  }}, [])
 
   // 자동 로그아웃 타이머 설정
-  // useEffect(() => {
-  //   if (user) {
-  //     const sessionExpiry = localStorage.getItem("EqualLocal_session_expiry")
-  //     if (sessionExpiry) {
-  //       const expiryTime = Number.parseInt(sessionExpiry)
-  //       const currentTime = Date.now()
-  //       const timeUntilExpiry = expiryTime - currentTime
-
-  //       if (timeUntilExpiry > 0) {
-  //         const timer = setTimeout(() => {
-  //           logout()
-  //           alert("세션이 만료되어 자동으로 로그아웃되었습니다.")
-  //           router.push('/')
-  //         }, timeUntilExpiry)
-
-  //         return () => clearTimeout(timer)
-  //       }
-  //     }
-  //   }
-  // }, [user])
+  useEffect(() => {
+    if (user) {
+      
+    }
+  }, [user])
 
   //회원가입 요청
   const signUp = async (email: string, password: string, username: string, phoneNumber: string): Promise<{ success: boolean; message: string }> => {
@@ -262,7 +235,7 @@ setIsLoading(true)
       setIsLoading(false)
       return { success: false, message: "오류가 발생하였습니다." }
     }
-    
+
   }
 
   const updateUser = (userData: Partial<User>) => {

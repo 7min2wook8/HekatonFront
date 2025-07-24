@@ -135,7 +135,7 @@ const handleSubmit = async (e: React.FormEvent) => {
     registrationDeadline: formatDateTime(formData.registrationDeadline),
   };
 
-  console.log("Submitting data:", submissionData);
+  console.log("제출 전 데이터:", submissionData);
 
   try {
     const response = await fetch(`${API_GATEWAY_URL}/api/contests`, {
@@ -152,7 +152,7 @@ const handleSubmit = async (e: React.FormEvent) => {
       throw new Error(errorData.message || '공모전 생성에 실패했습니다.');
     }
 
-    console.log("Contest created successfully:", await response.json());
+    console.log("생성된 공모전 정보:", await response.json());
     setSuccess(true);
 
     setTimeout(() => {

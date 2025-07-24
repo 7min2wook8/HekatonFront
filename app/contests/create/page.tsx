@@ -16,6 +16,7 @@ import { ArrowLeft, Save, Upload, X, Plus, Trophy, Users, CheckCircle, Loader2 }
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 import ProtectedRoute from "@/components/protected-route"
+import { formatPhoneNumber } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth-context"
 
 
@@ -544,7 +545,10 @@ const handleSubmit = async (e: React.FormEvent) => {
                     <Input
                       id="organizerPhone"
                       value={formData.organizerPhone}
-                      onChange={(e) => setFormData({ ...formData, organizerPhone: e.target.value })}
+                      onChange={(e) => {
+                        const formattedPhone = formatPhoneNumber(e.target.value);
+                        setFormData({ ...formData, organizerPhone: formattedPhone });
+                      }}
                       placeholder="010-0000-0000"
                     />
                   </div>

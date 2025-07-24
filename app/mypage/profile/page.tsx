@@ -14,7 +14,7 @@ import { X, Plus, Upload, Save, ArrowLeft, CheckCircle, User } from "lucide-reac
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 import ProtectedRoute from "@/components/protected-route"
-import { Skills, useAuth } from "@/contexts/auth-context"
+import { Profile, Skills, UserSkills, useAuth } from "@/contexts/auth-context"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
@@ -23,13 +23,26 @@ const defaultImage = "/placeholder.svg"
 
 function ProfileEditContent() {
 
-  const { profile, viewProfile, saveProfile, setProfile, isAuthenticated, user, updateUser, userSkills, viewUserSkills, updateUserSkills, getSkills, arraySkills } = useAuth()
-  const [newInterest, setNewInterest] = useState("")
-  const [selectSkill, setSelectSkill] = useState<Skills[]>([]); // 빈 Skills 배열로 초기화
+  const { viewProfile, saveProfile, isAuthenticated, user, 
+    updateUser, viewUserSkills, saveUserSkills,  getSkills } = useAuth()
+  //const [newInterest, setNewInterest] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
+  //const [success, setSuccess] = useState(false)
 
+  //선택된 스킬 데이터 저장
+  const [selectSkill, setSelectSkill] = useState<Skills[]>([]); // 빈 Skills 배열로 초기화
 
+  //모든 스킬 데이터를 가지고 있음
+  const [arraySkills, setArraySkills] = useState<Skills[]>([])
+
+  const [profile, setProfile] = useState<Profile>({
+    fullName: "",
+    bio: "",
+    profileImageUrl: "/placeholder.svg",
+    education: "",
+    experience: "",
+    portfolioUrl: "",
+  })
 
   const [isSelectOpen, setIsSelectOpen] = useState(false); // Select 컴포넌트의 열림 상태를 관리하는 새 상태
 
@@ -37,65 +50,118 @@ function ProfileEditContent() {
   const router = useRouter()
   
   useEffect(() => {
+    setIsLoading(true)
+    //setSuccess(false)
+
     if (isAuthenticated && user) { // 인증되었고 사용자가 존재할 때만 데이터 가져오기
-      fetchUserData();
-    }
+      fetchUserData();     
+    }else
+      router.push("/")
+
+    setIsLoading(false)
+    //setSuccess(true)
+    
   }, [isAuthenticated, user]); // isAuthenticated와 user에 의존
 
     // 이 useEffect는 AuthProvider에서 기술 스택이 가져와지고 설정된 후 올바르게 로깅될 것입니다.
   useEffect(() => {
-    console.log("현재 skills 상태:", arraySkills);
+    //console.log("현재 selectSkill 상태:", selectSkill);
     // 여기에 사용자의 기존 기술을 미리 선택하도록 설정할 수 있습니다.
     // 예: setSelectSkill(userSkills?.map(us => skills.find(s => s.id === us.skillId)).filter(Boolean) as Skills[]);
-  }, [arraySkills]);
+  }, [selectSkill]);
 
-  
-
+  //프로필 및 스킬 정보를 가져옴
   const fetchUserData = async () => {
-    if (user) {
-      const profileResult1 = await viewProfile();  // 비동기 호출
 
-      const userSkillsResult = await viewUserSkills();  // 비동기 호출
+    try {
+
+      const [profileResult, userSkillsResult, skillsResult] = await Promise.all([
+        viewProfile(),
+        viewUserSkills(),
+        getSkills(),
+      ]);
+
+      if(profileResult?.success){
+        setProfile(profileResult.profile)
+      }else{
+        console.warn("프로필 정보가 일부 누락되었거나 실패함");
+      }
+
+      let allSkills; //DB에 저장된 모든 스킬 정보 저장
       
-      const skillsResult = await getSkills();
+      if (skillsResult?.success) {
 
-      if (profileResult1?.success && userSkillsResult?.success && skillsResult?.success) {
-        console.log("프로필 불러오기 성공:");
-
-        //setNewSkill(skillsResult.skills)
+        allSkills = skillsResult.data ?? []; // ✅ 안전하게 처리
+        setArraySkills(allSkills);
 
       } else {
-        console.warn("프로필 불러오기 실패:");
+        console.warn("스킬 정보가 불러오기 실패함");
       }
+
+      if(userSkillsResult?.success){
+
+        const userSkillIds = userSkillsResult.data?.map((us) => us.skillId) ?? [];
+        allSkills = skillsResult.data ?? []; // ✅ 안전하게 처리
+        const selectedSkills = allSkills.filter((skill) =>
+        userSkillIds.includes(skill.id)); // 
+
+        setSelectSkill(selectedSkills); // ✅ 선택된 것만 저장
+
+      }else{
+        console.warn("사용자의 스킬 정보가 불러오기 실패함");
+      }
+
+    } catch (error) {
+      console.error("프로필 또는 스킬 정보 로딩 중 오류:", error);
     }
-    else
-      router.push("/")
   };
+
+
   // 프로필 저장 핸들러
   // 이 함수는 실제 API 호출을 시뮬레이션합니다.
   const handleSave = async () => {
-    setIsLoading(true)
-    setSuccess(false)
 
+    if (profile == null || user == null) {
+      return;
+    }
+    setIsLoading(true)
+    //setSuccess(false)
 
     try {
       
       // 실제 API 호출 시뮬레이션
       await new Promise((resolve) => setTimeout(resolve, 1000))
       
-      // // 프로필 업데이트
-      const result = await saveProfile();
-      // setProfile(result) // API 호출 결과로 프로필 업데이트
-      if (!result || !result.success) {
-        console.error("프로필 업데이트에 실패했습니다.")
-        return
+      // 스킬 변환
+    const userSkills: UserSkills[] = selectSkill.map(skill => ({
+      id:"",
+      userId: user.id, // 현재 로그인한 유저 ID
+      skillId: skill.id,
+      proficiency: 3, // 사용자가 선택할 수 있게 하려면 별도 상태로 관리
+      created_at: new Date().toISOString(),
+    }));
+
+
+      const [saveProfileResult, saveUserSkillsResult] = await Promise.all([
+        saveProfile(profile),
+        saveUserSkills(userSkills)
+      ]);
+
+      if (
+        saveProfileResult?.success &&
+        saveUserSkillsResult?.success
+      ) {
+
+        console.log("프로필 업데이트 성공:")
+        //setSuccess(true)
+        //setTimeout(() => setSuccess(false), 3000)
+        router.push("/mypage")
       }
-
-      console.log("프로필 업데이트 성공:", result)
-
-      setSuccess(true)
-      setTimeout(() => setSuccess(false), 3000)
-      router.push("/mypage")
+      else{
+        console.error("프로필 업데이트에 실패했습니다.")
+        return;   
+      }
+     
     } catch (error) {
       console.error("프로필 업데이트 오류:", error)
     } finally {
@@ -103,7 +169,20 @@ function ProfileEditContent() {
     }
   }
 
-  // const addInterest = (interest: string) => {
+  const addSkill = (skillToAdd: Skills) => {
+
+     if (!selectSkill.some(s => s.id === skillToAdd.id)) {
+      setSelectSkill((prev) => [...prev, skillToAdd]);
+    }
+  }
+
+  const removeSkill = (id: number) => {
+    setSelectSkill((prev) => prev.filter((skill) => skill.id !== id));
+  }
+
+  if (!user) return null
+
+    // const addInterest = (interest: string) => {
   //   if (interest && !profile.interests.includes(interest)) {
   //     setProfile({
   //       ...profile,
@@ -119,19 +198,6 @@ function ProfileEditContent() {
   //     interests: profile.interests.filter((i) => i !== interest),
   //   })
   // }
-
-  const addSkill = (skillToAdd: Skills) => {
-
-     if (!selectSkill.some(s => s.id === skillToAdd.id)) {
-      setSelectSkill((prev) => [...prev, skillToAdd]);
-    }
-  }
-
-  const removeSkill = (id: string) => {
-    //setSelectSkill((prev) => prev.filter((s) => s.id !== id));
-  }
-
-  if (!user) return null
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -156,12 +222,12 @@ function ProfileEditContent() {
         </div>
 
         {/* 성공 메시지 */}
-        {success && (
+        {/* {success && (
           <Alert className="mb-6 border-green-200 bg-green-50">
             <CheckCircle className="h-4 w-4 text-green-600" />
             <AlertDescription className="text-green-800">프로필이 성공적으로 업데이트되었습니다!</AlertDescription>
           </Alert>
-        )}
+        )} */}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* 프로필 사진 */}
@@ -193,14 +259,14 @@ function ProfileEditContent() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* <div className="space-y-2">
+                  <div className="space-y-2">
                     <Label htmlFor="name">이름</Label>
                     <Input
                       id="name"
-                      value={thisProfile.fullName}
-                      onChange={(e) => setProfile({ ...thisProfile, fullName: e.target.value })}
+                      value={profile?.fullName}
+                      onChange={(e) => setProfile({ ...profile, fullName: e.target.value })}
                     />
-                  </div> */}
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="email">이메일</Label>
                     <Input
@@ -217,8 +283,8 @@ function ProfileEditContent() {
                     <Label htmlFor="phone">전화번호</Label>
                     <Input
                       id="phone"
-                      value={user.phone_number}
-                      onChange={(e) => updateUser({ ...user, phone_number: e.target.value })}
+                      value={user.phoneNumber}
+                      onChange={(e) => updateUser({ ...user, phoneNumber: e.target.value })}
                       placeholder="010-0000-0000"
                     />
                   </div>
@@ -258,7 +324,7 @@ function ProfileEditContent() {
                   <Textarea
                     id="bio"
                     value={profile?.bio}
-                     onChange={(e) => setProfile(prev => prev ? { ...prev, bio: e.target.value } : null)}
+                     onChange={(e) => setProfile(prev => ({ ...prev, bio: e.target.value }))} // ✅ 항상 Profile 반환
                     rows={4}
                     placeholder="자신을 소개해주세요..."
                   />
@@ -343,7 +409,7 @@ function ProfileEditContent() {
                         setIsSelectOpen(true);
                         
                       }
-                      console.log(isSelectOpen)
+                      //console.log(isSelectOpen)
                     }}>
                       
                     <SelectTrigger className="flex-1">
@@ -358,9 +424,6 @@ function ProfileEditContent() {
                         ))}
                     </SelectContent>
                   </Select>
-                  {/* <Button onClick={() => addSkill("")} disabled={!newSkill} size="sm">
-                    <Plus className="w-4 h-4" />
-                  </Button> */}
                 </div>
               </CardContent>
             </Card>
@@ -377,7 +440,8 @@ function ProfileEditContent() {
                     <Input
                       id="education"
                       value={profile?.education}
-                      onChange={(e) =>setProfile(prev => prev ? { ...prev, education: e.target.value } : null)}
+                      onChange={(e) =>setProfile(prev => ({ ...prev, education: e.target.value }))}
+                      
                       placeholder="예: 컴퓨터공학과 학사"
                     />
                   </div>
@@ -386,7 +450,7 @@ function ProfileEditContent() {
                     <Input
                       id="experience"
                       value={profile?.experience}
-                      onChange={(e) => setProfile(prev => prev ? { ...prev, experience: e.target.value } : null)}
+                      onChange={(e) => setProfile(prev => ({ ...prev, experience: e.target.value }))}
                       placeholder="예: 프론트엔드 개발자 2년"
                     />
                   </div>
@@ -395,7 +459,7 @@ function ProfileEditContent() {
                     <Input
                       id="portfolio"
                       value={profile?.portfolioUrl}
-                      onChange={(e) => setProfile(prev => prev ? { ...prev, portfolioUrl: e.target.value } : null)}
+                      onChange={(e) => setProfile(prev => ({ ...prev, portfolioUrl: e.target.value }))}
                       placeholder="https://portfolio.example.com"
                     />
                   </div>

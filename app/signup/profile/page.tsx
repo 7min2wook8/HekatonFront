@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -29,201 +29,218 @@ import {
 } from "lucide-react"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
-import { useAuth } from "@/contexts/auth-context"
-
-const availableInterests = [
-  "창업",
-  "IT",
-  "디자인",
-  "마케팅",
-  "광고",
-  "사회",
-  "환경",
-  "교육",
-  "문화",
-  "예술",
-  "스포츠",
-  "의료",
-  "금융",
-  "정책",
-]
-
-const availableSkills = [
-  "React",
-  "Vue.js",
-  "Angular",
-  "Node.js",
-  "Python",
-  "Java",
-  "JavaScript",
-  "TypeScript",
-  "UI/UX",
-  "Figma",
-  "Photoshop",
-  "Illustrator",
-  "Marketing",
-  "SEO",
-  "Data Analysis",
-  "Machine Learning",
-]
-
-const regions = [
-  "서울",
-  "부산",
-  "대구",
-  "인천",
-  "광주",
-  "대전",
-  "울산",
-  "세종",
-  "경기",
-  "강원",
-  "충북",
-  "충남",
-  "전북",
-  "전남",
-  "경북",
-  "경남",
-  "제주",
-]
+import { Profile, Skills, useAuth, UserSkills } from "@/contexts/auth-context"
 
 export default function SignupProfilePage() {
-  const { user, updateUser } = useAuth()
-  const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
+   const { viewProfile, saveProfile, isAuthenticated, user, 
+     updateUser, viewUserSkills, saveUserSkills,  getSkills } = useAuth()
+   //const [newInterest, setNewInterest] = useState("")
+   const [isLoading, setIsLoading] = useState(false)
+   //const [success, setSuccess] = useState(false)
+ 
+   //선택된 스킬 데이터 저장
+   const [selectSkill, setSelectSkill] = useState<Skills[]>([]); // 빈 Skills 배열로 초기화
+ 
+   //모든 스킬 데이터를 가지고 있음
+   const [arraySkills, setArraySkills] = useState<Skills[]>([])
+ 
+   const [profile, setProfile] = useState<Profile>({
+     fullName: "",
+     bio: "",
+     profileImageUrl: "/placeholder.svg",
+     education: "",
+     experience: "",
+     portfolioUrl: "",
+   })
+ 
+   const [isSelectOpen, setIsSelectOpen] = useState(false); // Select 컴포넌트의 열림 상태를 관리하는 새 상태
+ 
+ 
+   const router = useRouter()
+   
+   useEffect(() => {
+     setIsLoading(true)
+     
+ 
+     if (isAuthenticated && user) { // 인증되었고 사용자가 존재할 때만 데이터 가져오기
+       fetchUserData();     
+     }else{
+      router.push("/")
+     }
+       
+ 
+     setIsLoading(false)
+     
+     
+   }, [isAuthenticated, user]); // isAuthenticated와 user에 의존
 
-  const [profile, setProfile] = useState({
-    bio: "",
-    location: "",
-    interests: [] as string[],
-    skills: [] as string[],
-    education: "",
-    experience: "",
-    portfolio: "",
-    github: "",
-  })
 
-  const [newInterest, setNewInterest] = useState("")
-  const [newSkill, setNewSkill] = useState("")
-
-  const handleSave = async () => {
-    setIsLoading(true)
-    setSuccess(false)
+   //프로필 및 스킬 정보를 가져옴
+  const fetchUserData = async () => {
 
     try {
-      // 실제 API 호출 시뮬레이션
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-        
-      // 사용자 정보 업데이트
-      updateUser({
-        //location: profile.location,
-        //interests: profile.interests,
-        //skills: profile.skills,
-      })
 
-      setSuccess(true)
+      const [profileResult, userSkillsResult, skillsResult] = await Promise.all([
+        viewProfile(),
+        viewUserSkills(),
+        getSkills(),
+      ]);
 
-      // 2초 후 홈으로 이동
-      setTimeout(() => {
-        router.push("/")
-      }, 2000)
+      if(profileResult?.success){
+        setProfile(profileResult.profile)
+      }else{
+        console.warn("프로필 정보가 일부 누락되었거나 실패함");
+      }
+
+      let allSkills; //DB에 저장된 모든 스킬 정보 저장
+      
+      if (skillsResult?.success) {
+
+        allSkills = skillsResult.data ?? []; // ✅ 안전하게 처리
+        setArraySkills(allSkills);
+
+      } else {
+        console.warn("스킬 정보가 불러오기 실패함");
+      }
+
+      if(userSkillsResult?.success){
+
+        const userSkillIds = userSkillsResult.data?.map((us) => us.skillId) ?? [];
+        allSkills = skillsResult.data ?? []; // ✅ 안전하게 처리
+        const selectedSkills = allSkills.filter((skill) =>
+        userSkillIds.includes(skill.id)); // 
+
+        setSelectSkill(selectedSkills); // ✅ 선택된 것만 저장
+
+      }else{
+        console.warn("사용자의 스킬 정보가 불러오기 실패함");
+      }
+
     } catch (error) {
-      console.error("프로필 저장 오류:", error)
+      console.error("프로필 또는 스킬 정보 로딩 중 오류:", error);
+    }
+  };
+
+
+
+  // 프로필 저장 핸들러
+  // 이 함수는 실제 API 호출을 시뮬레이션합니다.
+  const handleSave = async () => {
+
+    if (profile == null || user == null) {
+      return;
+    }
+    setIsLoading(true)
+    //setSuccess(false)
+
+    try {
+      
+      // 실제 API 호출 시뮬레이션
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      
+      // 스킬 변환
+    const userSkills: UserSkills[] = selectSkill.map(skill => ({
+      id:"",
+      userId: user.id, // 현재 로그인한 유저 ID
+      skillId: skill.id,
+      proficiency: 3, // 사용자가 선택할 수 있게 하려면 별도 상태로 관리
+      created_at: new Date().toISOString(),
+    }));
+
+
+      const [saveProfileResult, saveUserSkillsResult] = await Promise.all([
+        saveProfile(profile),
+        saveUserSkills(userSkills)
+      ]);
+
+      if (
+        saveProfileResult?.success &&
+        saveUserSkillsResult?.success
+      ) {
+
+        console.log("프로필 업데이트 성공:")
+        //setSuccess(true)
+        //setTimeout(() => setSuccess(false), 3000)
+        router.push("/mypage")
+      }
+      else{
+        console.error("프로필 업데이트에 실패했습니다.")
+        return;   
+      }
+     
+    } catch (error) {
+      console.error("프로필 업데이트 오류:", error)
     } finally {
       setIsLoading(false)
     }
   }
 
+  const addSkill = (skillToAdd: Skills) => {
+
+     if (!selectSkill.some(s => s.id === skillToAdd.id)) {
+      setSelectSkill((prev) => [...prev, skillToAdd]);
+    }
+  }
+
+  const removeSkill = (id: number) => {
+    setSelectSkill((prev) => prev.filter((skill) => skill.id !== id));
+  }
+
   const handleSkip = () => {
     router.push("/")
   }
-
-  const addInterest = (interest: string) => {
-    if (interest && !profile.interests.includes(interest)) {
-      setProfile({
-        ...profile,
-        interests: [...profile.interests, interest],
-      })
-    }
-    setNewInterest("")
-  }
-
-  const removeInterest = (interest: string) => {
-    setProfile({
-      ...profile,
-      interests: profile.interests.filter((i) => i !== interest),
-    })
-  }
-
-  const addSkill = (skill: string) => {
-    if (skill && !profile.skills.includes(skill)) {
-      setProfile({
-        ...profile,
-        skills: [...profile.skills, skill],
-      })
-    }
-    setNewSkill("")
-  }
-
-  const removeSkill = (skill: string) => {
-    setProfile({
-      ...profile,
-      skills: profile.skills.filter((s) => s !== skill),
-    })
-  }
-
   
+  // if (!user) {
+  //   console.log("사용자 정보가 없습니다.")
+  //   return (
+  //     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+  //       <Card className="w-96">
+  //         <CardContent className="p-8 text-center">
+  //           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
+  //           <h3 className="text-lg font-medium text-gray-900 mb-2">로딩 중...</h3>
+  //           <p className="text-gray-600">사용자 정보를 확인하고 있습니다.</p>
+  //         </CardContent>
+  //       </Card>
+  //     </div>
+  //   )
+  // }
 
-  if (!user) {
-    console.log("사용자 정보가 없습니다.")
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="w-96">
-          <CardContent className="p-8 text-center">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">로딩 중...</h3>
-            <p className="text-gray-600">사용자 정보를 확인하고 있습니다.</p>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  if (success) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Header />
-        <div className="container mx-auto px-4 py-16">
-          <Card className="max-w-md mx-auto text-center">
-            <CardContent className="p-8">
-              <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">프로필 설정 완료!</h2>
-              <p className="text-gray-600 mb-6">
-                프로필이 성공적으로 저장되었습니다.
-                <br />
-                이제 맞춤 공모전 추천을 받아보세요!
-              </p>
-              <div className="flex gap-2">
-                <Link href="/ai-recommend" className="flex-1">
-                  <Button className="w-full">
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    AI 추천받기
-                  </Button>
-                </Link>
-                <Link href="/" className="flex-1">
-                  <Button variant="outline" className="w-full bg-transparent">
-                    홈으로
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-        <Footer />
-      </div>
-    )
-  }
+  // if (success) {
+  //   return (
+  //     <div className="min-h-screen bg-gray-50">
+  //       <Header />
+  //       <div className="container mx-auto px-4 py-16">
+  //         <Card className="max-w-md mx-auto text-center">
+  //           <CardContent className="p-8">
+  //             <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+  //             <h2 className="text-2xl font-bold text-gray-900 mb-2">프로필 설정 완료!</h2>
+  //             <p className="text-gray-600 mb-6">
+  //               프로필이 성공적으로 저장되었습니다.
+  //               <br />
+  //               이제 맞춤 공모전 추천을 받아보세요!
+  //             </p>
+  //             <div className="flex gap-2">
+  //               <Link href="/ai-recommend" className="flex-1">
+  //                 <Button className="w-full">
+  //                   <Sparkles className="w-4 h-4 mr-2" />
+  //                   AI 추천받기
+  //                 </Button>
+  //               </Link>
+  //               <Link href="/" className="flex-1">
+  //                 <Button variant="outline" className="w-full bg-transparent">
+  //                   홈으로
+  //                 </Button>
+  //               </Link>
+  //             </div>
+  //           </CardContent>
+  //         </Card>
+  //       </div>
+  //       <Footer />
+  //     </div>
+  //   )
+  // }
+  if(user == null)
+    return;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -280,7 +297,7 @@ export default function SignupProfilePage() {
                 </div>
 
                 {/* 지역 */}
-                <div className="space-y-2">
+                {/* <div className="space-y-2">
                   <Label htmlFor="location" className="flex items-center">
                     <MapPin className="w-4 h-4 mr-1" />
                     활동 지역
@@ -301,14 +318,14 @@ export default function SignupProfilePage() {
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-gray-500">주로 활동하는 지역을 선택해주세요</p>
-                </div>
+                </div> */}
               </div>
 
               {/* 관심 분야 & 기술 스택 섹션 */}
               <div className="space-y-6 p-6 border rounded-lg">
                 <h3 className="text-lg font-semibold flex items-center"><Heart className="w-5 h-5 mr-2" />관심 분야 & 기술 스택</h3>
                 {/* 관심 분야 */}
-                <div className="space-y-4">
+                {/* <div className="space-y-4">
                   <h4 className="font-medium text-gray-900">관심 분야</h4>
                   <div className="flex flex-wrap gap-2">
                     {profile.interests.map((interest) => (
@@ -343,17 +360,17 @@ export default function SignupProfilePage() {
                     </Button>
                   </div>
                   <p className="text-xs text-gray-500">관심 있는 공모전 분야를 선택해주세요</p>
-                </div>
+                </div> */}
 
                 {/* 기술 스택 */}
                 <div className="space-y-4">
                   <h4 className="font-medium text-gray-900">기술 스택</h4>
                   <div className="flex flex-wrap gap-2">
-                    {profile.skills.map((skill) => (
-                      <Badge key={skill} variant="outline" className="flex items-center gap-1">
-                        {skill}
+                    {selectSkill?.map((skill) => (
+                      <Badge key={skill.id} variant="outline" className="flex items-center gap-1">
+                        {skill.name}
                         <button
-                          onClick={() => removeSkill(skill)}
+                          onClick={() => removeSkill(skill.id)}
                           className="ml-1 hover:bg-gray-300 rounded-full p-0.5"
                         >
                           <X className="w-3 h-3" />
@@ -362,23 +379,42 @@ export default function SignupProfilePage() {
                     ))}
                   </div>
                   <div className="flex gap-2">
-                    <Select value={newSkill} onValueChange={setNewSkill}>
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="기술 스택 선택" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableSkills
-                          .filter((skill) => !profile.skills.includes(skill))
-                          .map((skill) => (
-                            <SelectItem key={skill} value={skill}>
-                              {skill}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                    <Button onClick={() => addSkill(newSkill)} disabled={!newSkill} size="sm">
+                    <Select 
+                      // 1. open 상태를 직접 관리
+                      open={isSelectOpen}
+                      // 2. onOpenChange를 사용하여 상태 변경을 감지
+                      onOpenChange={setIsSelectOpen}
+
+                      onValueChange={(skillName: string) => {
+                        const foundSkill = arraySkills.find((s) => s.name === skillName);
+                        if (foundSkill) {
+                          addSkill(foundSkill); // 찾은 Skills 객체를 addSkill에 전달
+
+                          // --- 이 부분이 핵심입니다 ---
+                          // 아이템을 선택한 후에도 Select가 열려있도록 강제합니다.
+                          // onValueChange가 발생한 후 Select 내부적으로 닫히려고 할 수 있으므로,
+                          // 명시적으로 다시 열린 상태로 설정해 줍니다.
+                          setIsSelectOpen(true);
+                          
+                        }
+                        //console.log(isSelectOpen)
+                      }}>
+                      
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="기술 스택 선택" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {/*모든 스킬 불러옴*/}
+                      {arraySkills?.map((skill) => (
+                          <SelectItem key={skill.id} value={skill.name}>
+                            {skill.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                    {/* <Button onClick={() => addSkill(newSkill)} disabled={!newSkill} size="sm">
                       <Plus className="w-4 h-4" />
-                    </Button>
+                    </Button> */}
                   </div>
                   <p className="text-xs text-gray-500">보유하고 있는 기술이나 도구를 선택해주세요</p>
                 </div>
@@ -406,7 +442,7 @@ export default function SignupProfilePage() {
                       placeholder="예: 프론트엔드 개발자 2년"
                     />
                   </div>
-                  <div className="space-y-2">
+                  {/* <div className="space-y-2">
                     <Label htmlFor="portfolio">포트폴리오 URL</Label>
                     <Input
                       id="portfolio"
@@ -414,8 +450,8 @@ export default function SignupProfilePage() {
                       onChange={(e) => setProfile({ ...profile, portfolio: e.target.value })}
                       placeholder="https://portfolio.example.com"
                     />
-                  </div>
-                  <div className="space-y-2">
+                  </div> */}
+                  {/* <div className="space-y-2">
                     <Label htmlFor="github">GitHub URL</Label>
                     <Input
                       id="github"
@@ -423,7 +459,7 @@ export default function SignupProfilePage() {
                       onChange={(e) => setProfile({ ...profile, github: e.target.value })}
                       placeholder="https://github.com/username"
                     />
-                  </div>
+                  </div> */}
                 </div>
               </div>
 

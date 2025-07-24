@@ -114,7 +114,7 @@ const notifications = [
 
 function MyPageContent() {
   const [activeTab, setActiveTab] = useState("overview");
-  const { user, profile, viewProfile } = useAuth();
+  const { user, viewProfile } = useAuth();
   const [favoriteContests, setFavoriteContests] = useState<any[]>([]);
 
   useEffect(() => {

@@ -180,8 +180,8 @@ export default function ContestDetailPage() {
     // 백엔드에서 contest 객체에 'userId' 또는 'organizerId'와 같은 필드로 주최자 ID를 내려줘야 합니다.
     // 임시로 user.id와 contest.id가 같을 때만 허용하는 로직은 실제 배포 시 수정되어야 합니다.
     // if (!contest || !user || contest.userId !== user.id) {
-    //   toast.error("삭제 권한이 없습니다.");
-    //   return;
+    //   toast.error("삭제 권한이 없습니다.");
+    //   return;
     // }
 
     try {
@@ -289,10 +289,9 @@ export default function ContestDetailPage() {
 
           {/* 수정 및 삭제 버튼 그룹 */}
           <div className="flex gap-2">
-            {/* user.id와 contest.userId (주최자 ID) 비교 로직 필요 */}
-            {/* 백엔드에서 contest 객체에 `userId` 필드를 포함시켜주어야 합니다. */}
-            {/* 예시: user && contest && user.id === contest.userId */}
-            {user && user.id && ( // 이 조건은 현재 로그인 여부만 확인. 실제로는 `contest.userId`와 비교해야 함.
+            {/* user.id와 contest.createdByUserId (주최자 ID) 비교 로직 필요 */}
+            {/* 백엔드에서 contest 객체에 `createdByUserId` 필드를 포함시켜주어야 합니다. */}
+            {user && contest && user.id === contest.createdByUserId && ( // 수정된 조건
               <>
                 <Link href={`/contests/update?id=${params.id}`}>
                   <Button variant="outline" size="sm">

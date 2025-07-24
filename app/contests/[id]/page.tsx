@@ -27,6 +27,7 @@ import {
   User,
   Send,
   Trash2,
+  Edit, // Edit 아이콘 추가
 } from "lucide-react";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
@@ -161,7 +162,7 @@ export default function ContestDetailPage() {
     }
   };
 
-  //지원하기  
+  //지원하기
   const handleApply = () => {
     if (!isAuthenticated) {
       router.push("/login");
@@ -175,7 +176,9 @@ export default function ContestDetailPage() {
   const handleDeleteContest = async () => {
     console.log("현재 로그인 사용자:", user);
     console.log("공모전 정보:", contest);
-    // 생성된 로직: 유저 아이디 = 콘테스트 아이디로 판단하고 만든거같음. 수정 필요
+    // 권한 검사: 현재 로그인한 사용자의 ID와 공모전 주최자(user_id)가 일치하는지 확인
+    // 백엔드에서 contest 객체에 'userId' 또는 'organizerId'와 같은 필드로 주최자 ID를 내려줘야 합니다.
+    // 임시로 user.id와 contest.id가 같을 때만 허용하는 로직은 실제 배포 시 수정되어야 합니다.
     // if (!contest || !user || contest.userId !== user.id) {
     //   toast.error("삭제 권한이 없습니다.");
     //   return;
@@ -183,9 +186,9 @@ export default function ContestDetailPage() {
 
     try {
       const response = await fetch(
-        `${API_GATEWAY_URL}/api/contests/${params.id}/deactivate`,
+        `${API_GATEWAY_URL}/api/contests/${params.id}/deactivate`, // 이 엔드포인트는 물리적 삭제가 아닌 소프트 삭제(비활성화)를 의미
         {
-          method: "DELETE",
+          method: "DELETE", // 백엔드에서 DELETE 요청을 물리적 삭제로 처리한다면 상관없음
           credentials: "include",
         }
       );
@@ -284,36 +287,49 @@ export default function ContestDetailPage() {
             </Button>
           </Link>
 
-          {user && user.id === user.id && (
-            <AlertDialog
-              open={showDeleteConfirm}
-              onOpenChange={setShowDeleteConfirm}
-            >
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm">
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  공모전 삭제
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    정말로 이 공모전을 삭제하시겠습니까?
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    이 작업은 되돌릴 수 없습니다. 공모전과 관련된 모든 데이터가
-                    영구적으로 삭제됩니다.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>취소</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDeleteContest}>
-                    삭제
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
+          {/* 수정 및 삭제 버튼 그룹 */}
+          <div className="flex gap-2">
+            {/* user.id와 contest.createdByUserId (주최자 ID) 비교 로직 필요 */}
+            {/* 백엔드에서 contest 객체에 `createdByUserId` 필드를 포함시켜주어야 합니다. */}
+            {user && contest && user.id === contest.createdByUserId && ( // 수정된 조건
+              <>
+                <Link href={`/contests/update?id=${params.id}`}>
+                  <Button variant="outline" size="sm">
+                    <Edit className="w-4 h-4 mr-2" />
+                    공모전 수정
+                  </Button>
+                </Link>
+                <AlertDialog
+                  open={showDeleteConfirm}
+                  onOpenChange={setShowDeleteConfirm}
+                >
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm">
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      공모전 삭제
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        정말로 이 공모전을 삭제하시겠습니까?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        이 작업은 되돌릴 수 없습니다. 공모전과 관련된 모든
+                        데이터가 영구적으로 삭제됩니다.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>취소</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDeleteContest}>
+                        삭제
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

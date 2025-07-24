@@ -131,6 +131,7 @@ const handleSubmit = async (e: React.FormEvent) => {
     ...rest,
     categories: category ? [{ id: parseInt(category, 10) }] : [],
     maxParticipants: formData.maxParticipants ? parseInt(formData.maxParticipants, 10) : 0,
+    organizerPhone: formData.organizerPhone.replace(/\D/g, ""),
     startDate: formatDateTime(formData.startDate),
     endDate: formatDateTime(formData.endDate),
     registrationDeadline: formatDateTime(formData.registrationDeadline),

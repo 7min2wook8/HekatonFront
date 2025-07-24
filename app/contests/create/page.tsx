@@ -70,6 +70,8 @@ function ContestCreateContent() {
         }
         const data = await response.json();
         const categoriesArray = Array.isArray(data) ? data : data.content;
+        console.log('data구성:',data)
+        console.log('data에서 추출:',categoriesArray)
 
         if (Array.isArray(categoriesArray)) {
           setCategories(categoriesArray);
@@ -123,13 +125,17 @@ const handleSubmit = async (e: React.FormEvent) => {
     return `${dateString}T00:00:00`;
   };
 
+  const { category, ...rest } = formData;
   const submissionData = {
-    ...formData,
+    ...rest,
+    categories: category ? [{ id: parseInt(category, 10) }] : [],
     maxParticipants: formData.maxParticipants ? parseInt(formData.maxParticipants, 10) : 0,
     startDate: formatDateTime(formData.startDate),
     endDate: formatDateTime(formData.endDate),
     registrationDeadline: formatDateTime(formData.registrationDeadline),
   };
+
+  console.log("Submitting data:", submissionData);
 
   try {
     const response = await fetch(`${API_GATEWAY_URL}/api/contests`, {
@@ -307,7 +313,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                             <SelectItem value="error" disabled>카테고리 로딩 실패</SelectItem>
                           ) : (
                             categories.map((category) => (
-                              <SelectItem key={category.id} value={category.name}>
+                              <SelectItem key={category.id} value={String(category.id)}>
                                 {category.name}
                               </SelectItem>
                             ))

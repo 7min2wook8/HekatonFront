@@ -124,12 +124,14 @@ interface FavoriteContest {
 
 function MyPageContent() {
   const [activeTab, setActiveTab] = useState("overview");
-  const { user } = useAuth();
+
+  const { user, viewProfile } = useAuth();
   const [favoriteContests, setFavoriteContests] = useState<FavoriteContest[]>(
     []
   );
   const [isLoadingFavorites, setIsLoadingFavorites] = useState(true);
   const [favoritesError, setFavoritesError] = useState<string | null>(null);
+
 
   useEffect(() => {
     const fetchFavoriteContests = async () => {

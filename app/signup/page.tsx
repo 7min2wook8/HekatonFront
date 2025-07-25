@@ -85,7 +85,7 @@ export default function SignupPage() {
         // 회원가입 성공 후 사용자 정보 저장
         // 성공 시 프로필 페이지로 이동
         sessionStorage.removeItem("signup_agreements") // 임시 저장된 약관 동의 정보 삭제
-        router.push("/signup/profile")
+        router.push("/mypage/profile")
       }
       else {
         // 회원가입 실패

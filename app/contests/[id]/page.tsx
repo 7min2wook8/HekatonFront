@@ -291,44 +291,46 @@ export default function ContestDetailPage() {
           <div className="flex gap-2">
             {/* user.id와 contest.createdByUserId (주최자 ID) 비교 로직 필요 */}
             {/* 백엔드에서 contest 객체에 `createdByUserId` 필드를 포함시켜주어야 합니다. */}
-            {user && contest && user.id === contest.createdByUserId && ( // 수정된 조건
-              <>
-                <Link href={`/contests/update?id=${params.id}`}>
-                  <Button variant="outline" size="sm">
-                    <Edit className="w-4 h-4 mr-2" />
-                    공모전 수정
-                  </Button>
-                </Link>
-                <AlertDialog
-                  open={showDeleteConfirm}
-                  onOpenChange={setShowDeleteConfirm}
-                >
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" size="sm">
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      공모전 삭제
+            {user &&
+              contest &&
+              user.id === contest.createdByUserId && ( // 수정된 조건
+                <>
+                  <Link href={`/contests/update?id=${params.id}`}>
+                    <Button variant="outline" size="sm">
+                      <Edit className="w-4 h-4 mr-2" />
+                      공모전 수정
                     </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>
-                        정말로 이 공모전을 삭제하시겠습니까?
-                      </AlertDialogTitle>
-                      <AlertDialogDescription>
-                        이 작업은 되돌릴 수 없습니다. 공모전과 관련된 모든
-                        데이터가 영구적으로 삭제됩니다.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>취소</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleDeleteContest}>
-                        삭제
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </>
-            )}
+                  </Link>
+                  <AlertDialog
+                    open={showDeleteConfirm}
+                    onOpenChange={setShowDeleteConfirm}
+                  >
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="sm">
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        공모전 삭제
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          정말로 이 공모전을 삭제하시겠습니까?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          이 작업은 되돌릴 수 없습니다. 공모전과 관련된 모든
+                          데이터가 영구적으로 삭제됩니다.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>취소</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteContest}>
+                          삭제
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </>
+              )}
           </div>
         </div>
 
@@ -390,7 +392,7 @@ export default function ContestDetailPage() {
                       {contest.region}
                     </div>
                   )}
-                  {/* 참가 정원(미구현) */}
+                  {/* 참가 정원 */}
                   {contest.maxParticipants && (
                     <div className="flex items-center">
                       <Users className="w-4 h-4 mr-1" />
@@ -406,6 +408,16 @@ export default function ContestDetailPage() {
                     </div>
                   )}
                 </div>
+                {/* 태그 */}
+                {contest.tags?.length > 0 && (
+                  <div className="flex items-center">
+                    {contest.tags.map((tag: string) => (
+                      <Badge key={tag} variant="outline">
+                        #{tag}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </CardHeader>
             </Card>
 
@@ -430,7 +442,7 @@ export default function ContestDetailPage() {
               </TabsContent>
 
               <TabsContent value="requirements">
-                {/* 참가 자격(미구현) */}
+                {/* 참가 자격 */}
                 <div className="space-y-6">
                   {contest.eligibility?.length > 0 && (
                     <Card>
@@ -580,7 +592,7 @@ export default function ContestDetailPage() {
                 </div>
               </CardContent>
             </Card>
-            {/* 태그(미구현) */}
+            {/* 태그 */}
             {contest.tags?.length > 0 && (
               <Card>
                 <CardHeader>

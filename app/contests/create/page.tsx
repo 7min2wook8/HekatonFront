@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -16,24 +16,10 @@ import { ArrowLeft, Save, Upload, X, Plus, Trophy, Users, CheckCircle, Loader2 }
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 import ProtectedRoute from "@/components/protected-route"
+import { formatPhoneNumber } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth-context"
 
-const categories = [
-  "창업",
-  "IT",
-  "디자인",
-  "마케팅",
-  "광고",
-  "사회",
-  "환경",
-  "교육",
-  "문화",
-  "예술",
-  "스포츠",
-  "의료",
-  "금융",
-  "정책",
-]
+
 
 const regions = [
   "서울",
@@ -64,6 +50,47 @@ function ContestCreateContent() {
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const [categories, setCategories] = useState<any[]>([])
+  const [isCategoriesLoading, setIsCategoriesLoading] = useState(true)
+  const [categoriesError, setCategoriesError] = useState<string | null>(null)
+
+  const API_GATEWAY_URL = 'http://localhost:8080';
+
+  //카테고리 API 호출
+  useEffect(() => {
+    const fetchCategories = async () => {
+      setIsCategoriesLoading(true);
+      setCategoriesError(null);
+      try {
+        const response = await fetch(`${API_GATEWAY_URL}/api/categories`, {
+          method: 'GET',
+          credentials: 'include',
+        });
+        if (!response.ok) {
+          throw new Error("카테고리 목록을 불러오는 데 실패했습니다.");
+        }
+        const data = await response.json();
+        const categoriesArray = Array.isArray(data) ? data : data.content;
+        console.log('data구성:',data)
+        console.log('data에서 추출:',categoriesArray)
+
+        if (Array.isArray(categoriesArray)) {
+          setCategories(categoriesArray);
+        } else {
+          console.error("API로부터 받은 카테고리 데이터가 배열이 아닙니다:", data);
+          throw new Error("카테고리 데이터 형식이 올바르지 않습니다.");
+        }
+      } catch (error: any) {
+        setCategoriesError(error.message);
+        setCategories([]);
+      } finally {
+        setIsCategoriesLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -87,8 +114,6 @@ function ContestCreateContent() {
   const [newTag, setNewTag] = useState("")
   const [newEligibility, setNewEligibility] = useState("")
   
-  const API_GATEWAY_URL = 'http://localhost:8080';
-
 const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
   setIsLoading(true);
@@ -101,13 +126,18 @@ const handleSubmit = async (e: React.FormEvent) => {
     return `${dateString}T00:00:00`;
   };
 
+  const { category, ...rest } = formData;
   const submissionData = {
-    ...formData,
+    ...rest,
+    categories: category ? [{ id: parseInt(category, 10) }] : [],
     maxParticipants: formData.maxParticipants ? parseInt(formData.maxParticipants, 10) : 0,
+    organizerPhone: formData.organizerPhone.replace(/\D/g, ""),
     startDate: formatDateTime(formData.startDate),
     endDate: formatDateTime(formData.endDate),
     registrationDeadline: formatDateTime(formData.registrationDeadline),
   };
+
+  console.log("제출 전 데이터:", submissionData);
 
   try {
     const response = await fetch(`${API_GATEWAY_URL}/api/contests`, {
@@ -124,7 +154,7 @@ const handleSubmit = async (e: React.FormEvent) => {
       throw new Error(errorData.message || '공모전 생성에 실패했습니다.');
     }
 
-    console.log("Contest created successfully:", await response.json());
+    console.log("생성된 공모전 정보:", await response.json());
     setSuccess(true);
 
     setTimeout(() => {
@@ -268,18 +298,28 @@ const handleSubmit = async (e: React.FormEvent) => {
                       <Label htmlFor="category">카테고리 *</Label>
                       <Select
                         value={formData.category}
-                        onValueChange={(value) => setFormData({ ...formData, category: value })}
+                        onValueChange={(value) => {
+                          setFormData({ ...formData, category: value });
+                          console.log("선택된 카테고리:", value);
+                        }}
                         required
+                        disabled={isCategoriesLoading}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="카테고리 선택" />
                         </SelectTrigger>
                         <SelectContent>
-                          {categories.map((category) => (
-                            <SelectItem key={category} value={category}>
-                              {category}
-                            </SelectItem>
-                          ))}
+                          {isCategoriesLoading ? (
+                            <SelectItem value="loading" disabled>불러오는 중...</SelectItem>
+                          ) : categoriesError ? (
+                            <SelectItem value="error" disabled>카테고리 로딩 실패</SelectItem>
+                          ) : (
+                            categories.map((category) => (
+                              <SelectItem key={category.id} value={String(category.id)}>
+                                {category.name}
+                              </SelectItem>
+                            ))
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -506,7 +546,10 @@ const handleSubmit = async (e: React.FormEvent) => {
                     <Input
                       id="organizerPhone"
                       value={formData.organizerPhone}
-                      onChange={(e) => setFormData({ ...formData, organizerPhone: e.target.value })}
+                      onChange={(e) => {
+                        const formattedPhone = formatPhoneNumber(e.target.value);
+                        setFormData({ ...formData, organizerPhone: formattedPhone });
+                      }}
                       placeholder="010-0000-0000"
                     />
                   </div>

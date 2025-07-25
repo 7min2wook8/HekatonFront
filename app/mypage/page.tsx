@@ -112,54 +112,63 @@ const notifications = [
   },
 ];
 
+const API_GATEWAY_URL = "http://localhost:8080";
+
+interface FavoriteContest {
+  id: string;
+  title: string;
+  organizer: string;
+  startDate: string;
+  endDate: string;
+}
+
 function MyPageContent() {
   const [activeTab, setActiveTab] = useState("overview");
+
   const { user, viewProfile } = useAuth();
-  const [favoriteContests, setFavoriteContests] = useState<any[]>([]);
+  const [favoriteContests, setFavoriteContests] = useState<FavoriteContest[]>(
+    []
+  );
+  const [isLoadingFavorites, setIsLoadingFavorites] = useState(true);
+  const [favoritesError, setFavoritesError] = useState<string | null>(null);
+
 
   useEffect(() => {
-    if (user && user.id) {
-      // const localStorageKey = `favoriteContests_${user.id}`;
-      // console.log("localStorageKey : " + localStorageKey)
+    const fetchFavoriteContests = async () => {
+      if (!user) return;
 
-      // const storedFavorites = localStorage.getItem(localStorageKey);
-      // console.log("storedFavorites : " + storedFavorites)
-      // if (storedFavorites) {
-      //   setFavoriteContests(JSON.parse(storedFavorites));
-      // }
-      
-      //favoliteData(user.id)
+      setIsLoadingFavorites(true);
+      setFavoritesError(null);
 
-    }
-  }, []);
+      try {
+        const response = await fetch(
+          `${API_GATEWAY_URL}/api/mypage/favorites`,
+          {
+            method: "GET",
+            credentials: "include",
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("즐겨찾기 목록을 불러오는 데 실패했습니다.");
+        }
+
+        const data = await response.json();
+        console.log("API 응답 데이터:", data); // 데이터 확인을 위한 로그 추가
+        //data.id
+        setFavoriteContests(data|| []);
+      } catch (error: any) {
+        setFavoritesError(error.message);
+        setFavoriteContests([]);
+      } finally {
+        setIsLoadingFavorites(false);
+      }
+    };
+
+    fetchFavoriteContests();
+  }, [user]);
 
   if (!user) return null;
-    const favoliteData = async (user_Id : String) : Promise<{ success: boolean; message: string }> => 
-    {
-      try{
-        //미구현
-        const response = await fetch(`http://localhost:8080/api/users/me/favorites`, {
-                      method: 'GET',
-                      headers: {
-                          'Content-Type': 'application/json',
-                      },
-                      credentials: 'include', // 쿠키 포함                   
-                  });
-
-          if(response.ok){
-            return { success: true, message: "즐겨찾기 성공" }
-          }
-          else
-            return { success: false, message: "사용자 정보를 불러오지 못했습니다." }
-
-        }catch (error) {
-
-          return { success: false, message: "즐겨찾기 중 오류가 발생했습니다." }
-      
-        }
-  }
-
-  //const login = async (username: string, password: string): Promise<{ success: boolean; message: string }> => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -320,42 +329,58 @@ function MyPageContent() {
             {/* 즐겨찾기 리스트 */}
             <Card>
               <CardHeader>
-                <CardTitle>즐겨찾기</CardTitle>
+                <CardTitle>즐겨찾기한 공모전</CardTitle>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-4">
-                  {favoriteContests.length > 0 ? (
-                    favoriteContests.map((contest) => (
-                      <li
-                        key={contest.id}
-                        className="p-4 border rounded-lg shadow-sm hover:shadow-md transition-shadow bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <h4 className="font-medium text-gray-900 mb-2 sm:mb-0 sm:mr-4">
-                          {contest.title}
-                        </h4>
-                        {/* 공모전 상세 정보를 한 줄로 표기하기 위해 flexbox 사용 */}
-                        <div className="text-sm text-gray-600 flex flex-wrap items-center gap-x-3">
-                          <p>
-                            <strong>주최:</strong> {contest.organizer}
-                          </p>
-                          <p>
-                            <strong>지역:</strong> {contest.region}
-                          </p>
-                          <p>
-                            <strong>D-Day:</strong> {contest.dDay}
-                          </p>
-                          <p>
-                            <strong>기간:</strong> {contest.period}
-                          </p>
-                        </div>
-                      </li>
-                    ))
-                  ) : (
-                    <p className="text-center text-gray-500">
-                      아직 즐겨찾기한 공모전이 없습니다.
-                    </p>
-                  )}
-                </ul>
+                {isLoadingFavorites ? (
+                  <p className="text-center text-gray-500">
+                    목록을 불러오는 중...
+                  </p>
+                ) : favoritesError ? (
+                  <p className="text-center text-red-500">
+                    오류: {favoritesError}
+                  </p>
+                ) : (
+                  <ul className="space-y-4">
+                    {favoriteContests.length > 0 ? (
+                      favoriteContests.map((contest) => (
+                        <li key={contest.id}>
+                          <Link
+                            href={`/contests/${contest.id}`}
+                            className="block p-4 border rounded-lg shadow-sm hover:shadow-md transition-shadow bg-white"
+                          >
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                              <h4 className="font-medium text-gray-900 mb-2 sm:mb-0 sm:mr-4 truncate">
+                                {contest.title}
+                              </h4>
+                              <div className="text-sm text-gray-600 flex flex-wrap items-center gap-x-3 gap-y-1">
+                                <Badge variant="outline">
+                                  {contest.organizer}
+                                </Badge>
+                                <span
+                                  className={`font-semibold ${
+                                    new Date(contest.endDate) < new Date()
+                                      ? "text-gray-500"
+                                      : "text-red-600"
+                                  }`}
+                                >
+                                  마감:{" "}
+                                  {new Date(
+                                    contest.endDate
+                                  ).toLocaleDateString()}
+                                </span>
+                              </div>
+                            </div>
+                          </Link>
+                        </li>
+                      ))
+                    ) : (
+                      <p className="text-center text-gray-500">
+                        아직 즐겨찾기한 공모전이 없습니다.
+                      </p>
+                    )}
+                  </ul>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

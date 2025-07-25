@@ -15,6 +15,7 @@ import { ArrowLeft, User, Mail, Phone, Lock, CheckCircle, Loader2, Eye, EyeOff }
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 import TermsModal from "@/components/terms-modal"
+import { formatPhoneNumber } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth-context"
 
 export default function SignupPage() {
@@ -34,34 +35,6 @@ export default function SignupPage() {
 
   const { signUp, isAuthenticated } = useAuth()
 
-  // 사용자가 전화번호 입력 필드에 값을 입력할 때 호출되는 함수
-const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  // 입력된 값에서 숫자가 아닌 모든 문자(공백, 하이픈 등)를 제거
-  const rawValue = e.target.value.replace(/\D/g, "")
-
-  // 가공된 전화번호를 저장할 변수
-  let formattedValue = ""
-
-  // 전화번호의 앞 3자리 (ex. 010)
-  if (rawValue.length > 0) {
-    formattedValue = rawValue.substring(0, 3)
-  }
-
-  // 전화번호 중간 4자리 (ex. 1234)
-  if (rawValue.length > 3) {
-    formattedValue += `-${rawValue.substring(3, 7)}`
-  }
-
-  // 전화번호 마지막 4자리 (ex. 5678)
-  if (rawValue.length > 7) {
-    formattedValue += `-${rawValue.substring(7, 11)}`
-  }
-
-  // 가공된 전화번호를 상태로 저장 (예: 010-1234-5678)
-  setFormData({ ...formData, phone: formattedValue })
-}
-
-  
   // 약관 동의 정보 확인
   useEffect(() => {
     const savedAgreements = sessionStorage.getItem("signup_agreements")
@@ -272,7 +245,10 @@ const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
                         id="phone"
                         type="tel"
                         value={formData.phone}
-                        onChange={handlePhoneChange}
+                        onChange={(e) => {
+                          const formattedPhone = formatPhoneNumber(e.target.value);
+                          setFormData({ ...formData, phone: formattedPhone });
+                        }}
                         placeholder="하이픈(-)제외하고 입력"
                         required
                         disabled={isLoading}

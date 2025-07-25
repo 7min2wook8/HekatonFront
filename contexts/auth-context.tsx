@@ -2,7 +2,7 @@
 
 import { createContext, SetStateAction, useContext, useEffect, useState, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
-import { List } from "postcss/lib/list"
+
 
 interface User {
   id: string
@@ -74,33 +74,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)    
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
-  useEffect(() => {
 
-    console.log("AuthProvider : " + user)
-    //console.log("isAuthenticated : " + isAuthenticated)
-  },[user])
   //컴포넌트 마운트 시 저장된 세션 확인
   useEffect(() => {
-    const checkSession = () => {
+    setIsLoading(true)
+    const checkSession = async () => {
+        console.log("세션 확인 중...")
       try {
+        
+        const res = await fetch(`${AUTH_SERVER_URL}/auth/refresh`, {
+          method: "POST",
+          credentials: "include",
+        });
 
+        if (res.ok) {
+
+          const data = await res.json();
+          console.log("세션 확인 성공:", data);
+
+          // 자동 로그인 후 사용자 정보 가져오기
+          const meRes = await fetch(`${API_GATEWAY_URL}/api/users/me`, {
+            method: 'GET',
+            credentials: 'include' // JWT 쿠키 포함
+          });
+
+          if (!meRes.ok) {
+            console.error("사용자 정보 불러오기 실패");
+            setUser(null);
+            
+            return;
+          }
+
+          const userData = await meRes.json();
+          setUser(userData);
+          
+        } else {
+          setUser(null);
         }
-       catch (error) {
-
-      
-      } finally {
-       
+      } catch (err) {
+        console.error("세션 확인 실패", err);
+        setUser(null);
+      }
+      finally {
+        setIsLoading(false);
       }
 
-    //checkSession()
-  }}, [])
+
+    };
+
+  checkSession(); // 앱 최초 실행 시 호출
+   
+  }, [])
 
   // 자동 로그아웃 타이머 설정
   useEffect(() => {
+    let logoutTimer: NodeJS.Timeout;
+
     if (user) {
-      
+      logoutTimer = setTimeout(() => {
+        logout(); // 액세스 토큰 만료되었을 수 있음
+      }, 1000 * 60 * 60); // 예: 1시간 후 로그아웃
     }
-  }, [user])
+
+    return () => clearTimeout(logoutTimer);
+  }, [user]);
 
   //회원가입 요청
   const signUp = async (email: string, password: string, username: string, phoneNumber: string): Promise<{ success: boolean; message: string }> => {
@@ -132,17 +169,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
            console.log("자동 로그인 실행")
         }
 
-        setIsLoading(false)
-
         return { success: true, message: "회원가입에 성공했습니다." }
       } else {
         const msg = await response.text()
-        setIsLoading(false)
+        
         return { success: false, message: msg || "회원가입에 실패했습니다." }
       }
     } catch (error) {
-      setIsLoading(false)
+     
       return { success: false, message: "회원가입 중 오류가 발생했습니다." }
+    }
+    finally {
+      setIsLoading(false)
     }
   }
   
@@ -176,35 +214,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
 
         if (!meRes.ok) {
-          setIsLoading(false)
+         
           return { success: false, message: "사용자 정보를 불러오지 못했습니다." }
         }
         const userData = await meRes.json()
-        //console.log("userData : " + userData)
-        const sessionExpiry = Date.now() + 6 *(10 * 60 * 1000)// 10분 * 1분 * 1초 : 10분으로 설정
-
-        // 로컬 스토리지에 사용자 정보와 세션 만료 시간 저장
-        //localStorage.setItem("EqualLocal_user", JSON.stringify(userData))
-        //localStorage.setItem("EqualLocal_session_expiry", sessionExpiry.toString())
-
-        setUser(await userData)
-        setIsLoading(false)
+        setUser(userData)
+        
         console.log(userData)
         return { success: true, message: "로그인에 성공했습니다." }
       } else {
         const msg = await response.text()
-        setIsLoading(false)
+        
         return { success: false, message: msg +  "이메일 또는 비밀번호가 올바르지 않습니다." || "이메일 또는 비밀번호가 올바르지 않습니다." }
       }
 
     } catch (error) {
-      setIsLoading(false)
+     
       return { success: false, message: "로그인 중 오류가 발생했습니다." }
+    }
+    finally{
+      setIsLoading(false)
     }
   }
 
   const logout = async () => {
-setIsLoading(true)
+    setIsLoading(true)
 
     
     await new Promise((resolve) => setTimeout(resolve, 1000))
@@ -222,18 +256,23 @@ setIsLoading(true)
       if (response.ok) {
 
         setUser(null)
-        setIsLoading(false)
-       
+
         return { success: true, message: "로그아웃 완료." }
+
       } else {
+
         const msg = await response.text()
-        setIsLoading(false)
+
         return { success: false, message: msg +  "오류가 발생하였습니다." }
+
       }
 
     } catch (error) {
-      setIsLoading(false)
+      
       return { success: false, message: "오류가 발생하였습니다." }
+    }
+    finally{
+      setIsLoading(false)
     }
 
   }
@@ -575,7 +614,7 @@ setIsLoading(true)
   const value: AuthContextType = {
     user,
     isLoading,
-    isAuthenticated: !!user,
+    isAuthenticated: !!user && !isLoading, // user가 존재하고 로딩 중이 아닐 때 인증됨
     signUp,
     viewProfile,
     saveProfile,

@@ -19,6 +19,7 @@ export default function ProtectedRoute({ children, redirectTo = "/login" }: Prot
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
+      console.log("사용자가 인증되지 않았습니다. 로그인 페이지로 리다이렉트합니다.")
       router.push(redirectTo)
     }
   }, [isAuthenticated, isLoading, router, redirectTo])

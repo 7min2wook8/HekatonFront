@@ -30,10 +30,12 @@ export default function LoginPage() {
   // 이미 로그인된 경우 홈으로 리다이렉트
   useEffect(() => {
     if (isAuthenticated) {
+      console.log("이미 로그인되어 있습니다. 홈으로 리다이렉트합니다.")
       router.push("/")
     }
   }, [isAuthenticated, router])
 
+  // 로그인 폼 제출 핸들러
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
@@ -58,14 +60,6 @@ export default function LoginPage() {
     }
   }
 
-  // 데모용 계정 정보 자동 입력
-  // const fillDemoAccount = () => {
-  //   setFormData({
-  //     email: "minwook@example.com",
-  //     password: "password123",
-  //   })
-  // }
-
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -77,25 +71,7 @@ export default function LoginPage() {
               <CardTitle className="text-2xl font-bold">로그인</CardTitle>
               <p className="text-gray-600">이퀄로컬에 오신 것을 환영합니다</p>
             </CardHeader>
-            <CardContent className="space-y-6">
-              {/* 데모 계정 안내 */}
-              {/* <div className="bg-blue-50 p-4 rounded-lg">
-                <h4 className="font-medium text-blue-900 mb-2">데모 계정으로 체험해보세요!</h4>
-                <p className="text-sm text-blue-700 mb-3">
-                  이메일: minwook@example.com
-                  <br />
-                  비밀번호: password123
-                </p>
-                <Button variant="outline" size="sm" onClick={fillDemoAccount} className="w-full bg-transparent">
-                  데모 계정 정보 입력
-                </Button>
-              </div>
-
-              {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )} */}
+            <CardContent className="space-y-6">  
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">

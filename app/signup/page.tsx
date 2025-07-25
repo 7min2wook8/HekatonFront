@@ -15,6 +15,7 @@ import { ArrowLeft, User, Mail, Phone, Lock, CheckCircle, Loader2, Eye, EyeOff }
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 import TermsModal from "@/components/terms-modal"
+import { formatPhoneNumber } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth-context"
 
 export default function SignupPage() {
@@ -33,7 +34,7 @@ export default function SignupPage() {
   const [agreements, setAgreements] = useState<Record<string, boolean>>({})
 
   const { signUp, isAuthenticated } = useAuth()
-  
+
   // 약관 동의 정보 확인
   useEffect(() => {
     const savedAgreements = sessionStorage.getItem("signup_agreements")
@@ -71,16 +72,20 @@ export default function SignupPage() {
 
       // 실제 API 호출 시뮬레이션
       await new Promise((resolve) => setTimeout(resolve, 2000))
-      // 회원가입 API 호출
+      
+      // DB 전송을 위해 하이픈 등 숫자가 아닌 문자 모두 제거
+      const phoneForDB = formData.phone.replace(/\D/g, "");
+      console.log("DB 전송 직전 값:", phoneForDB);
 
-      const response = await signUp(formData.email, formData.password, formData.username, formData.phone)
+      // 회원가입 API 호출
+      const response = await signUp(formData.email, formData.password, formData.username, phoneForDB)
 
 
       if (response.success) {
         // 회원가입 성공 후 사용자 정보 저장
         // 성공 시 프로필 페이지로 이동
         sessionStorage.removeItem("signup_agreements") // 임시 저장된 약관 동의 정보 삭제
-        router.push("/signup/profile")
+        router.push("/mypage/profile")
       }
       else {
         // 회원가입 실패
@@ -127,7 +132,7 @@ export default function SignupPage() {
         </div>
 
         <div className="max-w-2xl mx-auto">
-          {/* 진�� 단계 */}
+          {/* 진행 단계 */}
           <div className="mb-8">
             <div className="flex items-center justify-center space-x-4">
               <div className="flex items-center">
@@ -237,14 +242,18 @@ export default function SignupPage() {
                       전화번호 *
                     </Label>
                     <Input
-                      id="phone"
-                      type="tel"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      placeholder="010-0000-0000"
-                      required
-                      disabled={isLoading}
-                    />
+                        id="phone"
+                        type="tel"
+                        value={formData.phone}
+                        onChange={(e) => {
+                          const formattedPhone = formatPhoneNumber(e.target.value);
+                          setFormData({ ...formData, phone: formattedPhone });
+                        }}
+                        placeholder="하이픈(-)제외하고 입력"
+                        required
+                        disabled={isLoading}
+                        maxLength={13}
+                      />
                     <p className="text-xs text-gray-500">본인 확인 및 중요 알림 발송에 사용됩니다</p>
                   </div>
                 </div>

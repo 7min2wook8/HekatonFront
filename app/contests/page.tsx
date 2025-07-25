@@ -217,7 +217,7 @@ export default function ContestsPage() {
                           <Clock className="w-4 h-4 mr-1" />
                           {contest.deadline}
                         </div>
-                        <div className="font-semibold text-blue-600">상금 {contest.prize}</div>
+                        <div className="font-semibold text-blue-600">상금 {contest.prizeDescription}</div>
                       </div>
                     </div>
                   </CardContent>

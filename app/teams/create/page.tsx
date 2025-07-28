@@ -53,17 +53,18 @@ function TeamCreateContent() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [error, setError] = useState<string | null>(null) // API 오류 메시지를 저장할 상태
 
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    contestId: "",
+    contestId: "", // contestId는 문자열로 관리하다가 전송 시 숫자로 변환
     location: "",
     maxMembers: 4,
     neededRoles: [] as string[],
     skills: [] as string[],
     requirements: "",
-    contactMethod: "platform", // platform, email, kakao
+    contactMethod: "platform", // platform, email, kakao, discord
     contactInfo: "",
     isPublic: true,
     allowDirectApply: true
@@ -72,23 +73,58 @@ function TeamCreateContent() {
   const [newRole, setNewRole] = useState("")
   const [newSkill, setNewSkill] = useState("")
 
+  const API_GATEWAY_URL = 'http://localhost:8080'; // 실제 API Gateway URL 또는 백엔드 URL
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError(null) // 새로운 요청 전에 오류 상태 초기화
+
+    if (!user) {
+      setError("로그인이 필요합니다.")
+      setIsLoading(false)
+      return
+    }
 
     try {
-      // 실제 API 호출 시뮬레이션
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      const payload = {
+        ...formData,
+        contestId: formData.contestId ? parseInt(formData.contestId) : null, // 문자열을 숫자로 변환
+        leaderId: user.id, // 현재 로그인한 사용자의 ID를 팀장 ID로 추가
+        status: "모집중", // 초기 모집 상태 설정
+        // currentMembers는 백엔드에서 생성 시 1(팀장)로 초기화할 수 있습니다.
+        // rating, applications 등도 백엔드에서 초기화될 수 있습니다.
+      }
 
-      console.log("팀 생성 데이터:", formData)
+      console.log("팀 생성 API 전송 데이터:", payload);
+
+      const response = await fetch(`${API_GATEWAY_URL}/api/teams`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // 필요하다면 인증 토큰을 추가합니다. 예:
+          // 'Authorization': `Bearer ${user.token}`
+        },
+        body: JSON.stringify(payload),
+        credentials: 'include', // 세션 쿠키 등을 전송할 경우
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "팀 생성에 실패했습니다.");
+      }
+
+      const createdTeam = await response.json()
+      console.log("팀 생성 성공:", createdTeam)
       setSuccess(true)
 
       // 3초 후 팀 목록으로 이동
       setTimeout(() => {
         router.push("/teams")
       }, 3000)
-    } catch (error) {
-      console.error("팀 생성 오류:", error)
+    } catch (err: any) {
+      console.error("팀 생성 오류:", err)
+      setError(err.message || "알 수 없는 오류가 발생했습니다.")
     } finally {
       setIsLoading(false)
     }
@@ -128,6 +164,8 @@ function TeamCreateContent() {
     })
   }
 
+  // user가 없으면 ProtectedRoute가 리다이렉트하므로, 여기서 렌더링할 필요는 없습니다.
+  // 다만 개발 중이거나 ProtectedRoute가 완전하지 않다면 유용할 수 있습니다.
   if (!user) return null
 
   if (success) {
@@ -182,6 +220,12 @@ function TeamCreateContent() {
             </div>
           </div>
         </div>
+
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+            <span className="block sm:inline">{error}</span>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -436,7 +480,8 @@ function TeamCreateContent() {
                     </div>
                     <h3 className="font-medium">{user.username}</h3>
                     <p className="text-sm text-gray-600">{user.email}</p>
-                    <p className="text-sm text-gray-600 mt-1">{/*user.location || */"위치 미설정"}</p>
+                    {/* user.location이 존재한다면 표시 */}
+                    {/* <p className="text-sm text-gray-600 mt-1">{user.location || "위치 미설정"}</p> */}
                   </div>
                 </CardContent>
               </Card>

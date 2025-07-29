@@ -84,7 +84,7 @@ function ContestEditContent() {
     registrationDeadline: "",
     startDate: "",
     endDate: "",
-    category: "",
+    categoryIds: "",
     region: "",
     prizeDescription: "",
     maxParticipants: "",
@@ -185,7 +185,12 @@ function ContestEditContent() {
             : "",
           startDate: data.startDate ? data.startDate.split("T")[0] : "",
           endDate: data.endDate ? data.endDate.split("T")[0] : "",
-          category: data.category || "",
+          categoryIds:
+            data.categoryIds &&
+            Array.isArray(data.categoryIds) &&
+            data.categoryIds.length > 0
+              ? String(data.categoryIds[0].id)
+              : "",
           region: data.region || "",
           prizeDescription: data.prizeDescription || "",
           maxParticipants: data.maxParticipants
@@ -260,6 +265,9 @@ function ContestEditContent() {
       startDate: formatDateTime(formData.startDate),
       endDate: formatDateTime(formData.endDate),
       registrationDeadline: formatDateTime(formData.registrationDeadline),
+      categoryIds: formData.categoryIds
+        ? [{ id: parseInt(formData.categoryIds, 10) }]
+        : [],
     };
 
     try {
@@ -457,11 +465,11 @@ function ContestEditContent() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="category">카테고리 *</Label>
+                      <Label htmlFor="categoryIds">카테고리 *</Label>
                       <Select
-                        value={formData.category}
+                        value={formData.categoryIds}
                         onValueChange={(value) => {
-                          setFormData({ ...formData, category: value });
+                          setFormData({ ...formData, categoryIds: value });
                           console.log("선택된 카테고리:", value);
                         }}
                         required
@@ -480,12 +488,12 @@ function ContestEditContent() {
                               카테고리 로딩 실패
                             </SelectItem>
                           ) : (
-                            categories.map((category) => (
+                            categories.map((categoryIds) => (
                               <SelectItem
-                                key={category.id}
-                                value={String(category.id)}
+                                key={categoryIds.id}
+                                value={String(categoryIds.id)}
                               >
-                                {category.name}
+                                {categoryIds.name}
                               </SelectItem>
                             ))
                           )}

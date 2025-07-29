@@ -349,6 +349,7 @@ export default function TeamsPage() {
                           <MessageSquare className="w-4 h-4 mr-1" />
                           지원하기
                         </Button>
+                        {/* ⭐️ 여기를 수정했습니다. */}
                         <Link href={`/teams/${team.id}`} className="flex-1">
                           <Button variant="outline" size="sm" className="w-full">
                             <Eye className="w-4 h-4 mr-1" />

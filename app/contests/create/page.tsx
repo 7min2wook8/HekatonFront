@@ -98,7 +98,7 @@ function ContestCreateContent() {
     registrationDeadline: "", // 접수 마감일
     startDate: "",    // 대회 시작일
     endDate: "",      // 대회 종료일
-    category: "",
+    categoryIds: "",
     region: "",
     prizeDescription: "",
     maxParticipants: "",
@@ -126,10 +126,10 @@ const handleSubmit = async (e: React.FormEvent) => {
     return `${dateString}T00:00:00`;
   };
 
-  const { category, ...rest } = formData;
+  const { categoryIds, ...rest } = formData;
   const submissionData = {
     ...rest,
-    categories: category ? [{ id: parseInt(category, 10) }] : [],
+    categoryIds: categoryIds ? [{ id: parseInt(categoryIds, 10) }] : [],
     maxParticipants: formData.maxParticipants ? parseInt(formData.maxParticipants, 10) : 0,
     organizerPhone: formData.organizerPhone.replace(/\D/g, ""),
     startDate: formatDateTime(formData.startDate),
@@ -295,11 +295,11 @@ const handleSubmit = async (e: React.FormEvent) => {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="category">카테고리 *</Label>
+                      <Label htmlFor="categoryIds">카테고리 *</Label>
                       <Select
-                        value={formData.category}
+                        value={formData.categoryIds}
                         onValueChange={(value) => {
-                          setFormData({ ...formData, category: value });
+                          setFormData({ ...formData, categoryIds: value });
                           console.log("선택된 카테고리:", value);
                         }}
                         required
@@ -314,9 +314,9 @@ const handleSubmit = async (e: React.FormEvent) => {
                           ) : categoriesError ? (
                             <SelectItem value="error" disabled>카테고리 로딩 실패</SelectItem>
                           ) : (
-                            categories.map((category) => (
-                              <SelectItem key={category.id} value={String(category.id)}>
-                                {category.name}
+                            categories.map((categoryIds) => (
+                              <SelectItem key={categoryIds.id} value={String(categoryIds.id)}>
+                                {categoryIds.name}
                               </SelectItem>
                             ))
                           )}

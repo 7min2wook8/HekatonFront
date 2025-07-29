@@ -237,7 +237,7 @@ export default function TeamsPage() {
                   <SelectContent>
                     <SelectItem value="전체">전체 상태</SelectItem>
                     <SelectItem value="모집중">모집중</SelectItem>
-                    <SelectItem value="마감임박">마감임박</SelectItem>
+                    {/* <SelectItem value="마감임박">마감임박</SelectItem> */}
                     <SelectItem value="모집완료">모집완료</SelectItem>
                   </SelectContent>
                 </Select>

@@ -1,27 +1,8 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState, useEffect, useCallback } from "react"
-import { useRouter, useParams } from "next/navigation"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import {
-  ArrowLeft,
-  Edit,
-  Users,
-  Loader2,
-  Info,
-  Mail,
-  MessageSquare,
-  Award, // contestTitle 제거시 이 아이콘도 더 이상 사용되지 않을 수 있습니다.
-  Trash2 // 삭제 아이콘 추가
-} from 'lucide-react'
-import Header from "@/components/header"
-import Footer from "@/components/footer"
-import ProtectedRoute from "@/components/protected-route"
-import { useAuth } from "@/contexts/auth-context"
+import Footer from "@/components/footer";
+import Header from "@/components/header";
+import ProtectedRoute from "@/components/protected-route";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,55 +13,96 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from "@/contexts/auth-context";
+import {
+  ArrowLeft,
+  Award,
+  CheckCircle,
+  Edit,
+  FileText,
+  Info,
+  Loader2,
+  Mail,
+  MapPin,
+  MessageSquare,
+  Trash2,
+  UserPlus,
+  XCircle,
+  AlertCircle,
+} from "lucide-react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner"; // toast 알림 추가
 
-
-// 백엔드 TeamsResponse DTO에 있는 필드들만을 기반으로 정의
 interface Team {
-  id: string; // UUID
+  id: string;
   name: string;
   description: string;
-  leaderId: string; // UUID
-  contestId: string; // UUID
-  isRecruiting: boolean; // 모집중 여부 (백엔드 DTO에 있음)
+  leaderId: string;
+  contestId: string;
+  isRecruiting: boolean;
   isPublic: boolean;
   maxMembers: number;
-  createdByUserId: string; // UUID
+  createdByUserId: string;
   createdAt: string;
   updatedAt: string;
+  neededRoles: string[];
+  skills: string[];
+  categoryIds?: string[];
 
-  // JSONB에서 변환되어 오는 필드들
-  eligibility: string[]; // 백엔드 DTO의 eligibility 필드 (이전 neededRoles)
-  tags: string[];        // 백엔드 DTO의 tags 필드 (이전 skills)
-
-  // 아래 필드들은 현재 백엔드 TeamsResponse DTO에 없으므로,
-  // 프론트엔드에서 임시로 사용하거나 제거해야 합니다.
-  // 이 코드에서는 일단 임시 값을 사용하거나 표시하지 않도록 처리했습니다.
-  // 추후 백엔드에서 제공되면 주석 해제하고 사용하시면 됩니다.
-  // contestTitle?: string;
-  // location?: string;
-  // currentMembers?: number; // DB에 멤버 테이블이 있다면 카운트해서 넘겨줘야 함
-  // leaderName?: string;
-  // requirements?: string;
-  // contactMethod?: "platform" | "email" | "kakao" | "discord";
-  // contactInfo?: string;
-  // allowDirectApply?: boolean; // 팀 설정의 직접 지원 허용 여부
-  // status?: "모집중" | "모집완료" | "활동중" | "활동종료"; // isRecruiting으로 대체 가능
+  contestTitle?: string;
+  location?: string;
+  currentMembers?: number;
+  leaderUsername?: string;
+  requirements?: string;
+  contactMethod?: "platform" | "email" | "kakao" | "discord";
+  contactInfo?: string;
+  allowDirectApply?: boolean;
+  status?: "모집중" | "마감임박" | "모집완료" | "활동중" | "활동종료";
 }
 
+interface UserProfile {
+  id: string;
+  username: string;
+  email: string;
+}
+
+interface Contest {
+  id: string;
+  title: string;
+  // 백엔드 Contest DTO에 있을 수 있는 다른 필드들도 여기에 추가하세요 (예: description, startDate, endDate 등)
+}
+
+// 🚨🚨🚨 TeamEditContent에서 사용하던 contests 배열을 여기에 가져옵니다. 🚨🚨🚨
+// 실제 프로젝트에서는 이 목록을 별도의 공통 파일 (예: `src/lib/constants.ts`)로 분리하여 관리하는 것이 좋습니다.
+const contests = [
+  { id: "1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d", title: "2025 스타트업 아이디어 공모전" },
+  { id: "2a3b4c5d-6e7f-8a9b-0c1d-2e3f4a5b6c7d", title: "AI 혁신 아이디어 공모전" },
+  { id: "3a4b5c6d-7e8f-9a0b-1c2d-3e4f5a6b7c8d", title: "모바일 앱 개발 공모전" },
+  { id: "4a5b6c7d-8e9f-0a1b-2c3d-4e5f6a7b8c9d", title: "환경보호 캠페인 공모전" },
+  { id: "5a6b7c8d-9e0f-1a2b-3c4d-5e6f7a8b9c0d", title: "사회혁신 아이디어 공모전" }
+];
+
+
 function TeamDetailPageContent() {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const router = useRouter();
   const params = useParams();
   const teamId = params.teamId as string;
 
   const [team, setTeam] = useState<Team | null>(null);
+  const [leaderProfile, setLeaderProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isDeleting, setIsDeleting] = useState(false); // 삭제 중 상태
+  const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // API_GATEWAY_URL을 백엔드 로그에서 확인된 8086 포트로 변경합니다.
-  const API_GATEWAY_URL = 'http://localhost:8086'; // <-- 여기 수정!
+  const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8080";
 
   const fetchTeamData = useCallback(async () => {
     if (!teamId) {
@@ -92,73 +114,195 @@ function TeamDetailPageContent() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_GATEWAY_URL}/api/teams/${teamId}`, {
-        method: 'GET',
+      const teamResponse = await fetch(`${API_GATEWAY_URL}/api/teams/${teamId}`, {
+        method: "GET",
         headers: {
-          'Content-Type': 'application/json',
-          // 'Authorization': user?.token ? `Bearer ${user.token}` : '', // 인증 토큰이 필요하다면 추가
+          "Content-Type": "application/json",
         },
-        credentials: 'include',
+        credentials: "include",
       });
 
-      if (!response.ok) {
-        if (response.status === 404) {
+      if (!teamResponse.ok) {
+        if (teamResponse.status === 404) {
           throw new Error("팀을 찾을 수 없습니다.");
         }
-        const errorData = await response.json();
-        throw new Error(errorData.message || "팀 정보를 불러오는 데 실패했습니다.");
+        const errorData = await teamResponse.json();
+        throw new Error(errorData.message || `팀 정보를 불러오는 데 실패했습니다 (Status: ${teamResponse.status}).`);
       }
 
-      const data: Team = await response.json();
-      setTeam(data);
+      const rawTeamData: Team = await teamResponse.json();
+      const enrichedTeamData: Team = { ...rawTeamData };
+
+      // 팀장 정보 가져오기 (기존 로직 유지)
+      let fetchedLeaderProfile: UserProfile | null = null;
+      if (rawTeamData.leaderId) {
+        try {
+          const leaderResponse = await fetch(`${API_GATEWAY_URL}/api/users/${rawTeamData.leaderId}`, {
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+          });
+
+          if (leaderResponse.ok) {
+            const parsedData = await leaderResponse.json();
+            if (parsedData && typeof parsedData === 'object' && 'username' in parsedData && 'email' in parsedData) {
+              fetchedLeaderProfile = parsedData as UserProfile;
+              enrichedTeamData.leaderUsername = fetchedLeaderProfile.username;
+            } else {
+              console.warn("팀장 사용자 정보 API 응답 형식이 올바르지 않거나 필수 필드가 누락되었습니다.", parsedData);
+              enrichedTeamData.leaderUsername = "[팀장 이름 정보 없음]";
+            }
+          } else {
+            console.warn(`팀장 사용자 정보 불러오기 실패 (ID: ${rawTeamData.leaderId}, Status: ${leaderResponse.status}, Text: ${await leaderResponse.text()})`);
+            enrichedTeamData.leaderUsername = "[팀장 이름 정보 없음]";
+          }
+        } catch (leaderErr) {
+          console.error("팀장 사용자 정보 불러오기 오류:", leaderErr);
+          enrichedTeamData.leaderUsername = "[팀장 이름 정보 없음]";
+        }
+      } else {
+          enrichedTeamData.leaderUsername = "[팀장 ID 없음]";
+      }
+      setLeaderProfile(fetchedLeaderProfile);
+
+      // 🚨🚨🚨 공모전 정보 가져오기 로직 개선 🚨🚨🚨
+      if (rawTeamData.contestId) {
+        let foundContestTitle = "[알 수 없는 공모전]"; // 기본 폴백 메시지
+        let fetchedFromApiSuccessfully = false; // API에서 성공적으로 가져왔는지 여부
+
+        try {
+          const contestResponse = await fetch(`${API_GATEWAY_URL}/api/contests/${rawTeamData.contestId}`, {
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+          });
+
+          if (contestResponse.ok) {
+            const fetchedContest: Contest = await contestResponse.json();
+            if (fetchedContest.title) {
+              foundContestTitle = fetchedContest.title;
+              fetchedFromApiSuccessfully = true; // API에서 성공적으로 제목을 가져옴
+            } else {
+              console.warn(`[TeamDetail] 공모전 API 응답에 'title' 필드가 없습니다. (ID: ${rawTeamData.contestId}, 응답: ${JSON.stringify(fetchedContest)})`);
+              // title 필드가 없어도, 일단 API는 성공했으니 로컬 폴백은 시도하지 않음.
+              // 대신 좀 더 구체적인 메시지 설정
+              foundContestTitle = "[공모전 제목 없음 (API 응답 오류)]";
+            }
+          } else {
+            const errorText = await contestResponse.text();
+            console.warn(`[TeamDetail] 공모전 정보 불러오기 실패 (ID: ${rawTeamData.contestId}, Status: ${contestResponse.status}, 응답 본문: ${errorText})`);
+            // API 호출 실패 시, 폴백 로직으로 넘어감
+          }
+        } catch (contestErr: any) {
+          console.error("[TeamDetail] 공모전 정보 불러오기 오류 (네트워크/파싱):", contestErr.message || contestErr);
+          // 네트워크 오류나 JSON 파싱 오류 시, 폴백 로직으로 넘어감
+        }
+
+        // API에서 제목을 성공적으로 가져오지 못했을 경우 로컬 contests 배열에서 폴백 시도
+        if (!fetchedFromApiSuccessfully) {
+          const localContest = contests.find(c => c.id === rawTeamData.contestId);
+          if (localContest) {
+            foundContestTitle = localContest.title;
+            console.info(`[TeamDetail] 공모전 정보 API 실패 후 로컬 목록에서 제목을 찾았습니다: ${localContest.title}`);
+          } else {
+            console.warn(`[TeamDetail] 로컬 공모전 목록에서도 ID ${rawTeamData.contestId}에 해당하는 공모전을 찾을 수 없습니다.`);
+            // 로컬에서도 찾지 못했을 때 최종 폴백 메시지
+            foundContestTitle = "[알 수 없는 공모전 (정보 부족)]";
+          }
+        }
+        enrichedTeamData.contestTitle = foundContestTitle;
+
+      } else {
+        // contestId 자체가 없는 경우
+        console.info("[TeamDetail] 팀 데이터에 contestId가 없습니다.");
+        enrichedTeamData.contestTitle = "[참가 공모전 없음]";
+      }
+      // 🚨🚨🚨 공모전 정보 불러오기 로직 개선 끝 🚨🚨🚨
+
+      // 필요한 기본값 설정 (백엔드에서 제공하지 않을 수 있는 필드)
+      enrichedTeamData.currentMembers = enrichedTeamData.currentMembers ?? 0;
+      enrichedTeamData.location = enrichedTeamData.location ?? "정보 없음";
+      enrichedTeamData.requirements = enrichedTeamData.requirements ?? "";
+      enrichedTeamData.contactMethod = enrichedTeamData.contactMethod ?? "platform";
+      enrichedTeamData.contactInfo = enrichedTeamData.contactInfo ?? "";
+      enrichedTeamData.allowDirectApply = enrichedTeamData.allowDirectApply ?? true;
+      enrichedTeamData.neededRoles = enrichedTeamData.neededRoles ?? [];
+      enrichedTeamData.skills = enrichedTeamData.skills ?? [];
+
+      // 모집 상태 업데이트 (옵션)
+      if (enrichedTeamData.isRecruiting) {
+        if (enrichedTeamData.currentMembers && enrichedTeamData.maxMembers && enrichedTeamData.currentMembers >= enrichedTeamData.maxMembers) {
+          enrichedTeamData.status = "모집완료";
+        } else if (enrichedTeamData.currentMembers && enrichedTeamData.maxMembers && enrichedTeamData.currentMembers >= enrichedTeamData.maxMembers - 1) {
+          enrichedTeamData.status = "마감임박";
+        } else {
+          enrichedTeamData.status = "모집중";
+        }
+      } else {
+        enrichedTeamData.status = "모집완료";
+      }
+
+      setTeam(enrichedTeamData);
     } catch (err: any) {
       console.error("팀 정보 불러오기 오류:", err);
       setError(err.message || "알 수 없는 오류가 발생했습니다.");
+      toast.error(`팀 정보 불러오기 실패: ${err.message || "알 수 없는 오류"}`);
     } finally {
       setIsLoading(false);
     }
-  }, [teamId]);
+  }, [teamId, API_GATEWAY_URL]);
 
   useEffect(() => {
-    if (teamId) {
-      fetchTeamData();
-    }
-  }, [teamId, fetchTeamData]);
+    fetchTeamData();
+  }, [fetchTeamData]);
 
-  // 팀 삭제 핸들러
   const handleDeleteTeam = async () => {
     setIsDeleting(true);
     setError(null);
     try {
       const response = await fetch(`${API_GATEWAY_URL}/api/teams/${teamId}`, {
-        method: 'DELETE',
+        method: "DELETE",
         headers: {
-          'Content-Type': 'application/json',
-          // 'Authorization': user?.token ? `Bearer ${user.token}` : '', // 인증 토큰이 필요하다면 추가
+          "Content-Type": "application/json",
         },
-        credentials: 'include',
+        credentials: "include",
       });
 
       if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          throw new Error("팀 삭제 권한이 없습니다. 로그인 상태를 확인해주세요.");
+        }
         const errorData = await response.json();
         throw new Error(errorData.message || "팀 삭제에 실패했습니다.");
       }
 
-      alert("팀이 성공적으로 삭제되었습니다.");
-      router.push("/teams"); // 팀 목록 페이지로 리다이렉트
+      toast.success("팀이 성공적으로 비활성화(삭제)되었습니다.");
+      router.push("/teams");
     } catch (err: any) {
       console.error("팀 삭제 오류:", err);
       setError(err.message || "알 수 없는 오류가 발생했습니다.");
+      toast.error(err.message || "팀 삭제 중 오류가 발생했습니다.");
     } finally {
       setIsDeleting(false);
     }
   };
 
+  const handleJoinTeam = () => {
+    if (!isAuthenticated) {
+      toast.warning("로그인이 필요합니다.");
+      router.push("/login");
+      return;
+    }
+    toast.info("팀 지원 기능은 현재 준비 중입니다!");
+  };
 
-  // contactMethod, contactInfo 필드가 백엔드 DTO에 없으므로
-  // 이 함수는 사용되지 않거나, 임시로 처리되어야 합니다.
+  const getStatusBadgeVariant = (status?: string, isRecruiting?: boolean) => {
+    if (status === "모집완료" || !isRecruiting) return "secondary";
+    if (status === "마감임박") return "destructive";
+    if (status === "모집중") return "default";
+    return "outline";
+  };
+
   const getContactIcon = (method: string | undefined) => {
-    if (!method) return <Info className="w-4 h-4 mr-2" />; // method가 없으면 기본 아이콘 반환
+    if (!method) return <Info className="w-4 h-4 mr-2 text-gray-400" />;
     switch (method) {
       case "email":
         return <Mail className="w-4 h-4 mr-2" />;
@@ -167,29 +311,26 @@ function TeamDetailPageContent() {
       case "discord":
         return <MessageSquare className="w-4 h-4 mr-2" />;
       default:
-        return <Info className="w-4 h-4 mr-2" />;
+        return <Info className="w-4 h-4 mr-2 text-gray-400" />;
     }
   };
 
-  // leaderId는 백엔드 DTO에 있으므로 비교 가능
-  const isLeader = user?.id === team?.leaderId; // team이 null일 수 있으므로 옵셔널 체이닝
+  const isLeader = user?.id === team?.leaderId;
 
-
-  // 로딩 상태
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="w-10 h-10 animate-spin text-blue-500" />
-        <p className="ml-3 text-lg text-gray-700">팀 정보를 불러오는 중...</p>
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+        <Loader2 className="w-10 h-10 animate-spin text-blue-500 mb-3" />
+        <p className="text-lg text-gray-700">팀 정보를 불러오는 중...</p>
       </div>
     );
   }
 
-  // 오류 상태
-  if (error && !team) { // 팀 데이터가 로드되기 전의 오류
+  if (error && !team) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4 flex items-center" role="alert">
+          <AlertCircle className="w-5 h-5 mr-2" />
           <span className="block sm:inline">{error}</span>
         </div>
         <Link href="/teams">
@@ -199,7 +340,6 @@ function TeamDetailPageContent() {
     );
   }
 
-  // 팀 데이터가 없을 경우 (예: 404가 아닌 다른 이유로 null이 된 경우)
   if (!team) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
@@ -211,12 +351,14 @@ function TeamDetailPageContent() {
     );
   }
 
+  const displayLeaderName = team.leaderUsername || "알 수 없음";
+  const displayLeaderInitial = displayLeaderName.trim().length > 0 ? displayLeaderName.trim()[0].toUpperCase() : "?";
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
 
       <div className="container mx-auto px-4 py-8">
-        {/* 헤더 */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <Link href="/teams">
@@ -238,21 +380,10 @@ function TeamDetailPageContent() {
                   팀 수정
                 </Button>
               </Link>
-              <Link href={`/teams/${team.id}/manage-members`}>
-                <Button>
-                  <Users className="w-4 h-4 mr-2" />
-                  팀원 관리
-                </Button>
-              </Link>
-              {/* 삭제 버튼 추가 */}
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" disabled={isDeleting}>
-                    {isDeleting ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <Trash2 className="w-4 h-4 mr-2" />
-                    )}
+                    {isDeleting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
                     팀 삭제
                   </Button>
                 </AlertDialogTrigger>
@@ -260,7 +391,8 @@ function TeamDetailPageContent() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>정말 팀을 삭제하시겠습니까?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      이 작업은 되돌릴 수 없습니다. 팀과 관련된 모든 데이터가 영구적으로 삭제됩니다.
+                      이 작업은 되돌릴 수 없습니다. 팀과 관련된 모든 데이터가 영구적으로 삭제됩니다. (현재는 모집 중지 및 비공개
+                      처리됩니다.)
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -275,16 +407,15 @@ function TeamDetailPageContent() {
           )}
         </div>
 
-        {error && ( // 삭제 중 발생하는 오류 메시지
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4 flex items-center" role="alert">
+            <AlertCircle className="w-5 h-5 mr-2" />
             <span className="block sm:inline">{error}</span>
           </div>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* 메인 정보 */}
           <div className="lg:col-span-2 space-y-6">
-            {/* 기본 정보 */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
@@ -296,148 +427,201 @@ function TeamDetailPageContent() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm font-medium text-gray-500">참가 공모전</p>
-                    {/* team.contestTitle이 백엔드 DTO에 없으므로 임시 값 사용 */}
                     <p className="text-lg font-semibold flex items-center mt-1">
                       <Award className="w-4 h-4 mr-2 text-yellow-500" />
-                      {"[공모전 정보 없음]"}
+                      {team.contestTitle || "[공모전 정보 없음]"}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-500">활동 지역</p>
-                    {/* team.location이 백엔드 DTO에 없으므로 임시 값 사용 */}
-                    <p className="text-lg font-semibold mt-1">{"[활동 지역 정보 없음]"}</p>
+                    <p className="text-lg font-semibold flex items-center mt-1">
+                      <MapPin className="w-4 h-4 mr-2 text-gray-500" />
+                      {team.location || "[활동 지역 정보 없음]"}
+                    </p>
                   </div>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">모집 현황</p>
-                  {/* 여기가 Hydration 오류를 해결하기 위해 p 태그를 div 태그로 변경합니다. */}
                   <div className="text-lg font-semibold mt-1">
-                    {/* team.currentMembers가 백엔드 DTO에 없으므로 임시 값 (0) 사용 */}
-                    {`0`} / {team.maxMembers} 명
-                    <Badge variant={team.isRecruiting ? "default" : "secondary"} className="ml-2">
-                      {team.isRecruiting ? "모집중" : "모집완료"} {/* isRecruiting 필드 사용 */}
+                    {`${team.currentMembers || 0} / ${team.maxMembers} 명`}
+                    <Badge variant={getStatusBadgeVariant(team.status, team.isRecruiting)} className="ml-2">
+                      {team.status || (team.isRecruiting ? "모집중" : "모집완료")}
                     </Badge>
                   </div>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">생성일</p>
-                  <p className="text-lg font-semibold mt-1">{new Date(team.createdAt).toLocaleDateString()}</p>
+                  <p className="text-md text-gray-700 mt-1">
+                    {new Date(team.createdAt).toLocaleDateString("ko-KR", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </p>
                 </div>
               </CardContent>
             </Card>
 
-            {/* 모집 정보 */}
             <Card>
               <CardHeader>
                 <CardTitle>모집 정보</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">모집하는 역할</p>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {/* team.eligibility 사용 */}
-                    {team.eligibility && team.eligibility.length > 0 ? (
-                      team.eligibility.map((role) => (
-                        <Badge key={role} variant="secondary">{role}</Badge>
+                  <p className="text-sm font-medium text-gray-500 mb-2">모집하는 역할</p>
+                  <div className="flex flex-wrap gap-2">
+                    {team.neededRoles && team.neededRoles.length > 0 ? (
+                      team.neededRoles.map((role) => (
+                        <Badge key={role} variant="secondary">
+                          {role}
+                        </Badge>
                       ))
                     ) : (
-                      <p className="text-gray-600">모집하는 역할이 없습니다.</p>
+                      <p className="text-gray-500">모집하는 역할이 없습니다.</p>
                     )}
                   </div>
                 </div>
 
                 <div>
-                  <p className="text-sm font-medium text-gray-500">필요한 기술 스택</p>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {/* team.tags 사용 */}
-                    {team.tags && team.tags.length > 0 ? (
-                      team.tags.map((skill) => (
-                        <Badge key={skill} variant="outline">{skill}</Badge>
+                  <p className="text-sm font-medium text-gray-500 mb-2">필요한 기술 스택</p>
+                  <div className="flex flex-wrap gap-2">
+                    {team.skills && team.skills.length > 0 ? (
+                      team.skills.map((skill) => (
+                        <Badge key={skill} variant="outline">
+                          {skill}
+                        </Badge>
                       ))
                     ) : (
-                      <p className="text-gray-600">필요한 기술 스택이 없습니다.</p>
+                      <p className="text-gray-500">필요한 기술 스택이 없습니다.</p>
                     )}
                   </div>
                 </div>
 
                 <div>
-                  <p className="text-sm font-medium text-gray-500">지원 요구사항</p>
-                  {/* team.requirements가 백엔드 DTO에 없으므로 임시 값 사용 */}
-                  <p className="text-gray-800 whitespace-pre-line mt-2">
-                    {"[지원 요구사항 정보 없음]"}
-                  </p>
+                  <p className="text-sm font-medium text-gray-500 mb-2">지원 요구사항</p>
+                  <div className="flex items-start mt-1">
+                    <FileText className="w-4 h-4 mr-2 text-gray-500 mt-1" />
+                    <p className="text-md text-gray-700 whitespace-pre-wrap">
+                      {team.requirements || "특별한 요구사항이 없습니다."}
+                    </p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* 연락 방법 */}
             <Card>
               <CardHeader>
                 <CardTitle>연락 방법</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">주요 연락 방법</p>
+                  <p className="text-sm font-medium text-gray-500 mb-2">주요 연락 방법</p>
                   <p className="text-lg font-semibold flex items-center mt-1">
-                    {/* team.contactMethod가 백엔드 DTO에 없으므로 임시 값 사용 */}
-                    {getContactIcon(undefined)} {/* 임시로 undefined 전달 */}
-                    {"[연락 방법 정보 없음]"}
+                    {getContactIcon(team.contactMethod)}
+                    {team.contactMethod === "platform"
+                      ? "플랫폼 내 메시지"
+                      : team.contactMethod === "email"
+                      ? "이메일"
+                      : team.contactMethod === "kakao"
+                      ? "카카오톡"
+                      : team.contactMethod === "discord"
+                      ? "디스코드"
+                      : "[연락 방법 정보 없음]"}
                   </p>
                 </div>
-                {/* contactInfo가 백엔드 DTO에 없으므로 이 블록은 항상 숨겨집니다. */}
-                <div>
-                  <p className="text-gray-600">연락처 정보가 제공되지 않습니다.</p>
-                </div>
+                {team.contactMethod && team.contactMethod !== "platform" && team.contactInfo ? (
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 mb-2">연락처 정보</p>
+                    <p className="text-md text-gray-700">{team.contactInfo}</p>
+                  </div>
+                ) : (
+                  team.contactMethod &&
+                  team.contactMethod !== "platform" && (
+                    <div>
+                      <p className="text-gray-600">연락처 정보가 제공되지 않습니다.</p>
+                    </div>
+                  )
+                )}
               </CardContent>
             </Card>
           </div>
 
-          {/* 사이드바 */}
           <div className="space-y-6">
-            {/* 팀장 정보 */}
             <Card>
               <CardHeader>
                 <CardTitle>팀장 정보</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-center">
-                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                    {/* team.leaderName이 백엔드 DTO에 없으므로 임시 값 사용 */}
-                    <span className="text-blue-600 font-bold text-xl">{"?"}</span>
-                  </div>
-                  <h3 className="font-medium">{"[팀장 이름 정보 없음]"}</h3>
+                  <Avatar className="w-16 h-16 mx-auto mb-3">
+                    <AvatarFallback className="bg-blue-100 text-blue-600 font-bold text-xl">
+                      {displayLeaderInitial}
+                    </AvatarFallback>
+                  </Avatar>
+                  <h3 className="font-medium">{displayLeaderName}</h3>
+                  {isLeader && leaderProfile && leaderProfile.email && (
+                    <p className="text-sm text-gray-600">{leaderProfile.email}</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
 
-            {/* 팀 설정 요약 */}
             <Card>
               <CardHeader>
                 <CardTitle>팀 설정</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-4">
                 <div className="flex items-center space-x-2">
-                  <span className={`w-4 h-4 rounded-full ${team.isPublic ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                  <span className="text-sm">{team.isPublic ? "공개 팀" : "비공개 팀"}</span>
+                  {team.isPublic ? (
+                    <CheckCircle className="w-5 h-5 text-green-500" />
+                  ) : (
+                    <XCircle className="w-5 h-5 text-red-500" />
+                  )}
+                  <p className="text-sm">
+                    팀 공개 상태: <span className="font-semibold">{team.isPublic ? "공개" : "비공개"}</span>
+                  </p>
                 </div>
                 <div className="flex items-center space-x-2">
-                  {/* team.allowDirectApply가 백엔드 DTO에 없으므로 임시 값 (false) 사용 */}
-                  <span className={`w-4 h-4 rounded-full ${false ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                  <span className="text-sm">{"[직접 지원 허용 여부 정보 없음]"}</span>
+                  {team.allowDirectApply ? (
+                    <CheckCircle className="w-5 h-5 text-green-500" />
+                  ) : (
+                    <XCircle className="w-5 h-5 text-red-500" />
+                  )}
+                  <p className="text-sm">
+                    직접 지원 허용: <span className="font-semibold">{team.allowDirectApply ? "허용" : "불허"}</span>
+                  </p>
                 </div>
+                {team.categoryIds && team.categoryIds.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 mb-2">관련 카테고리</p>
+                    <div className="flex flex-wrap gap-2">
+                      {team.categoryIds.map((categoryId: string) => (
+                        <Badge key={categoryId} variant="outline">
+                          {categoryId.substring(0, 0)}...
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
-            {/* 지원하기 버튼 (팀장이 아닐 경우) */}
-            {!isLeader && (
+            {!isLeader && team.isRecruiting && (
               <Card>
                 <CardContent className="p-4">
-                  <Button className="w-full" size="lg">
-                    팀에 지원하기
+                  <Button className="w-full" size="lg" onClick={handleJoinTeam}>
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    팀 지원하기
                   </Button>
-                  <p className="text-xs text-gray-500 text-center mt-2">
-                    팀에 지원하여 함께 프로젝트를 시작해보세요!
-                  </p>
+                  <p className="text-xs text-gray-500 text-center mt-2">팀에 지원하여 함께 프로젝트를 시작해보세요!</p>
+                </CardContent>
+              </Card>
+            )}
+            {!isLeader && !team.isRecruiting && (
+              <Card>
+                <CardContent className="p-4 text-center text-gray-600">
+                  <AlertCircle className="w-6 h-6 mx-auto mb-2 text-yellow-500" />
+                  <p>현재 이 팀은 모집 중이 아닙니다.</p>
                 </CardContent>
               </Card>
             )}
@@ -450,10 +634,7 @@ function TeamDetailPageContent() {
   );
 }
 
-// Next.js App Router에서 동적 경로를 처리하는 방식
-// src/app/teams/[teamId]/page.tsx 파일에 이 컴포넌트를 직접 export 하거나
-// 별도 컴포넌트로 분리 후 import 하여 사용합니다.
-export default function TeamDetailPage() {
+export default function TeamDetailPageWrapper() {
   return (
     <ProtectedRoute>
       <TeamDetailPageContent />

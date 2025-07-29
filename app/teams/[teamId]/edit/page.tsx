@@ -12,14 +12,14 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ArrowLeft, Save, Plus, X, Users, Trophy, CheckCircle, Loader2, Info } from 'lucide-react'
+import { ArrowLeft, Save, Plus, X, Users, Trophy, CheckCircle, Loader2 } from 'lucide-react'
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 import ProtectedRoute from "@/components/protected-route"
 import { useAuth } from "@/contexts/auth-context"
 
 // 백엔드 TeamsResponse DTO에 있는 필드들만을 기반으로 정의
-// 이 인터페이스는 백엔드 TeamsResponse DTO와 일치해야 합니다.
+// 여기서는 `neededRoles`와 `skills`로 명시적으로 변경했습니다.
 interface Team {
   id: string;
   name: string;
@@ -33,15 +33,14 @@ interface Team {
   createdAt: string;
   updatedAt: string;
 
-  eligibility: string[]; // 이전 neededRoles에 해당
-  tags: string[];        // 이전 skills에 해당
+  // 🚨🚨🚨 백엔드 DTO와 일치하는 필드명으로 다시 변경합니다! 🚨🚨🚨
+  neededRoles: string[]; // 백엔드 DTO의 neededRoles
+  skills: string[];      // 백엔드 DTO의 skills
 
-  // 아래 필드들은 백엔드 TeamsResponse에 있다면 추가해야 합니다.
-  // 이 페이지는 수정 페이지이므로, 백엔드에서 불러와서 다시 보낼 필드들이 여기에 포함됩니다.
   location: string;
   requirements: string;
   contactMethod: "platform" | "email" | "kakao" | "discord";
-  contactInfo: string; // contactMethod가 platform이 아닐 경우 필요
+  contactInfo: string;
   allowDirectApply: boolean;
 }
 
@@ -75,17 +74,17 @@ const contests = [
 ]
 
 function TeamEditContent() {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const router = useRouter();
   const params = useParams();
   const teamId = params.teamId as string;
 
-  const [isLoading, setIsLoading] = useState(true); // 초기 로딩 상태
-  const [isSaving, setIsSaving] = useState(false); // 저장 중 상태
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState<Team | null>(null); // 불러온 데이터를 저장할 상태
+  const [formData, setFormData] = useState<Team | null>(null);
 
   const [newRole, setNewRole] = useState("");
   const [newSkill, setNewSkill] = useState("");
@@ -99,6 +98,21 @@ function TeamEditContent() {
       setIsLoading(false);
       return;
     }
+    
+    // user 또는 isAuthenticated가 로드될 때까지 기다림
+    // ProtectedRoute에서 처리되지만, 만약을 위한 방어로직
+    if (!user && !isAuthenticated) {
+        setIsLoading(true);
+        return; 
+    }
+    
+    // 로그아웃 상태라면 로그인 페이지로 리다이렉션
+    if (!user) {
+        setError("로그인이 필요합니다.");
+        setIsLoading(false);
+        router.push('/login');
+        return;
+    }
 
     setIsLoading(true);
     setError(null);
@@ -107,14 +121,19 @@ function TeamEditContent() {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          // 'Authorization': user?.token ? `Bearer ${user.token}` : '', // 인증 토큰이 필요하다면 추가
+          // Authorization 헤더는 백엔드 세션/쿠키 또는 전역 인터셉터에서 처리한다고 가정
         },
-        credentials: 'include',
+        credentials: 'include', // 세션 쿠키 등을 자동으로 포함시키기 위해 필요
       });
 
       if (!response.ok) {
         if (response.status === 404) {
           throw new Error("팀을 찾을 수 없습니다.");
+        }
+        if (response.status === 401 || response.status === 403) {
+            setError("인증되지 않았거나 접근 권한이 없습니다. 다시 로그인해주세요.");
+            router.push('/login');
+            return;
         }
         const errorData = await response.json();
         throw new Error(errorData.message || "팀 정보를 불러오는 데 실패했습니다.");
@@ -125,22 +144,21 @@ function TeamEditContent() {
       // 권한 확인: 현재 로그인한 유저가 팀장이 아니면 접근 불가
       if (user && data.leaderId !== user.id) {
         setError("팀 수정 권한이 없습니다.");
-        router.push(`/teams/${teamId}`); // 상세보기 페이지로 리다이렉션
+        router.push(`/teams/${teamId}`);
         return;
       }
 
       // 폼 데이터 초기화 (백엔드에서 받은 데이터로)
-      // `neededRoles`는 `eligibility`로, `skills`는 `tags`로 매핑
+      // 🚨🚨🚨 백엔드 DTO 필드명(neededRoles, skills)을 그대로 사용합니다. 🚨🚨🚨
       setFormData({
         ...data,
-        eligibility: data.eligibility || [], // null일 경우 빈 배열로 초기화
-        tags: data.tags || [], // null일 경우 빈 배열로 초기화
-        // 백엔드에 없는 필드는 기본값 또는 임시값으로 설정
-        location: data.location || "온라인", // 백엔드에 location 필드가 없다면 기본값
-        requirements: data.requirements || "", // 백엔드에 requirements 필드가 없다면 기본값
-        contactMethod: data.contactMethod || "platform", // 백엔드에 contactMethod 필드가 없다면 기본값
-        contactInfo: data.contactInfo || "", // 백엔드에 contactInfo 필드가 없다면 기본값
-        allowDirectApply: data.allowDirectApply !== undefined ? data.allowDirectApply : true, // 백엔드에 없으면 기본값 true
+        neededRoles: data.neededRoles || [], // null일 경우 빈 배열로 초기화
+        skills: data.skills || [],           // null일 경우 빈 배열로 초기화
+        location: data.location || "온라인", 
+        requirements: data.requirements || "", 
+        contactMethod: data.contactMethod || "platform", 
+        contactInfo: data.contactInfo || "", 
+        allowDirectApply: data.allowDirectApply !== undefined ? data.allowDirectApply : true, 
       });
 
     } catch (err: any) {
@@ -149,13 +167,13 @@ function TeamEditContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [teamId, user, router]);
+  }, [teamId, user, isAuthenticated, router]);
 
   useEffect(() => {
-    if (teamId && user) { // user 정보가 로드된 후에 fetch 시작
-      fetchTeamData();
+    if (user || isAuthenticated) {
+        fetchTeamData();
     }
-  }, [teamId, user, fetchTeamData]);
+  }, [user, isAuthenticated, fetchTeamData]);
 
 
   // 2. 팀 정보 업데이트 (저장)
@@ -171,25 +189,23 @@ function TeamEditContent() {
     }
 
     try {
-      // 백엔드의 TeamsUpdateRequest DTO에 맞춰 payload 구성
-      // 여기서는 Team 인터페이스의 모든 필드를 보냅니다.
-      // 백엔드 DTO에 따라 필요한 필드만 포함하도록 조정해야 합니다.
+      // 🚨🚨🚨 백엔드의 TeamsUpdateRequest DTO에 맞춰 payload 구성 시, 
+      // 필드명을 백엔드와 정확히 일치시킵니다! 🚨🚨🚨
       const payload = {
         name: formData.name,
         description: formData.description,
         contestId: formData.contestId,
-        location: formData.location, // 백엔드 DTO에 있어야 함
+        location: formData.location, 
         maxMembers: formData.maxMembers,
-        eligibility: formData.eligibility, // neededRoles
-        tags: formData.tags, // skills
-        requirements: formData.requirements, // 백엔드 DTO에 있어야 함
-        contactMethod: formData.contactMethod, // 백엔드 DTO에 있어야 함
-        contactInfo: formData.contactInfo, // 백엔드 DTO에 있어야 함
+        neededRoles: formData.neededRoles, // 백엔드의 neededRoles 필드에 맞춤
+        skills: formData.skills,             // 백엔드의 skills 필드에 맞춤
+        requirements: formData.requirements, 
+        contactMethod: formData.contactMethod, 
+        contactInfo: formData.contactInfo, 
         isPublic: formData.isPublic,
-        allowDirectApply: formData.allowDirectApply, // 백엔드 DTO에 있어야 함
-        isRecruiting: formData.isRecruiting, // 모집 상태도 수정 가능하게 할 경우
-        // leaderId는 일반적으로 수정하지 않습니다 (팀장 위임 기능이 별도로 있을 수 있음)
-        // createdByUserId, createdAt, updatedAt 등은 백엔드에서 관리
+        isRecruiting: formData.isRecruiting, 
+        allowDirectApply: formData.allowDirectApply, 
+        // leaderId, createdByUserId, createdAt, updatedAt 등은 백엔드에서 관리하므로 여기서 전송하지 않음
       };
 
       console.log("팀 수정 API 전송 데이터:", payload);
@@ -198,13 +214,18 @@ function TeamEditContent() {
         method: 'PUT', // 또는 PATCH
         headers: {
           'Content-Type': 'application/json',
-          // 'Authorization': user.token ? `Bearer ${user.token}` : '', // 인증 토큰이 필요하다면 추가
+          // Authorization 헤더는 백엔드 세션/쿠키 또는 전역 인터셉터에서 처리한다고 가정
         },
         body: JSON.stringify(payload),
         credentials: 'include',
       });
 
       if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+            setError("인증되지 않았거나 접근 권한이 없습니다. 다시 로그인해주세요.");
+            router.push('/login');
+            return;
+        }
         const errorData = await response.json();
         throw new Error(errorData.message || "팀 정보 수정에 실패했습니다.");
       }
@@ -212,7 +233,6 @@ function TeamEditContent() {
       console.log("팀 수정 성공!");
       setSuccess(true);
 
-      // 3초 후 팀 상세 페이지로 이동
       setTimeout(() => {
         router.push(`/teams/${teamId}`);
       }, 3000);
@@ -226,10 +246,10 @@ function TeamEditContent() {
   };
 
   const addRole = () => {
-    if (formData && newRole && !formData.eligibility.includes(newRole)) {
+    if (formData && newRole && !formData.neededRoles.includes(newRole)) {
       setFormData({
         ...formData,
-        eligibility: [...formData.eligibility, newRole]
+        neededRoles: [...formData.neededRoles, newRole]
       });
     }
     setNewRole("");
@@ -239,16 +259,16 @@ function TeamEditContent() {
     if (formData) {
       setFormData({
         ...formData,
-        eligibility: formData.eligibility.filter(r => r !== role)
+        neededRoles: formData.neededRoles.filter(r => r !== role)
       });
     }
   };
 
   const addSkill = () => {
-    if (formData && newSkill && !formData.tags.includes(newSkill)) {
+    if (formData && newSkill && !formData.skills.includes(newSkill)) {
       setFormData({
         ...formData,
-        tags: [...formData.tags, newSkill]
+        skills: [...formData.skills, newSkill]
       });
     }
     setNewSkill("");
@@ -258,17 +278,21 @@ function TeamEditContent() {
     if (formData) {
       setFormData({
         ...formData,
-        tags: formData.tags.filter(s => s !== skill)
+        skills: formData.skills.filter(s => s !== skill)
       });
     }
   };
 
-  if (!user) { // ProtectedRoute가 작동하지 않는 경우를 대비한 추가 방어 로직
-    return null;
+  if (!user && !isAuthenticated) {
+    return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <Loader2 className="w-10 h-10 animate-spin text-blue-500" />
+            <p className="ml-3 text-lg text-gray-700">인증 정보를 확인 중...</p>
+        </div>
+    );
   }
 
-  // 초기 로딩 상태 (데이터 불러오는 중)
-  if (isLoading) {
+  if (isLoading && user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Loader2 className="w-10 h-10 animate-spin text-blue-500" />
@@ -277,8 +301,7 @@ function TeamEditContent() {
     );
   }
 
-  // 오류 상태 (데이터 로딩 실패 또는 권한 없음)
-  if (error && !formData) { // formData가 null인 경우만 오류 메시지를 직접 표시
+  if (error && !formData) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
@@ -291,7 +314,6 @@ function TeamEditContent() {
     );
   }
 
-  // 성공 메시지 표시
   if (success) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -322,15 +344,13 @@ function TeamEditContent() {
     );
   }
 
-  // 폼 렌더링 (formData가 성공적으로 로드된 경우)
-  if (!formData) return null; // formData가 null이면 렌더링하지 않음 (로딩/에러 처리에서 걸러짐)
+  if (!formData) return null;
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
 
       <div className="container mx-auto px-4 py-8">
-        {/* 헤더 */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <Link href={`/teams/${teamId}`}>
@@ -346,7 +366,7 @@ function TeamEditContent() {
           </div>
         </div>
 
-        {error && ( // 저장 중 발생하는 오류 메시지
+        {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
             <span className="block sm:inline">{error}</span>
           </div>
@@ -354,9 +374,7 @@ function TeamEditContent() {
 
         <form onSubmit={handleSubmit} className="space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* 메인 정보 */}
             <div className="lg:col-span-2 space-y-6">
-              {/* 기본 정보 */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
@@ -456,7 +474,7 @@ function TeamEditContent() {
                   <div className="space-y-2">
                     <Label htmlFor="isRecruiting">모집 상태</Label>
                     <Select
-                      value={formData.isRecruiting.toString()} // boolean을 string으로 변환
+                      value={formData.isRecruiting.toString()}
                       onValueChange={(value) => setFormData({ ...formData, isRecruiting: value === 'true' })}
                       required
                     >
@@ -472,7 +490,6 @@ function TeamEditContent() {
                 </CardContent>
               </Card>
 
-              {/* 모집 정보 */}
               <Card>
                 <CardHeader>
                   <CardTitle>모집 정보</CardTitle>
@@ -481,7 +498,7 @@ function TeamEditContent() {
                   <div className="space-y-2">
                     <Label>모집하는 역할</Label>
                     <div className="flex flex-wrap gap-2 mb-2">
-                      {formData.eligibility.map((role) => ( // eligibility 사용
+                      {formData.neededRoles.map((role) => ( // neededRoles 사용
                         <Badge key={role} variant="secondary" className="flex items-center gap-1">
                           {role}
                           <button
@@ -501,7 +518,7 @@ function TeamEditContent() {
                         </SelectTrigger>
                         <SelectContent>
                           {availableRoles
-                            .filter(role => !formData.eligibility.includes(role))
+                            .filter(role => !formData.neededRoles.includes(role))
                             .map((role) => (
                               <SelectItem key={role} value={role}>
                                 {role}
@@ -518,7 +535,7 @@ function TeamEditContent() {
                   <div className="space-y-2">
                     <Label>필요한 기술 스택</Label>
                     <div className="flex flex-wrap gap-2 mb-2">
-                      {formData.tags.map((skill) => ( // tags 사용
+                      {formData.skills.map((skill) => ( // skills 사용
                         <Badge key={skill} variant="outline" className="flex items-center gap-1">
                           {skill}
                           <button
@@ -538,7 +555,7 @@ function TeamEditContent() {
                         </SelectTrigger>
                         <SelectContent>
                           {availableSkills
-                            .filter(skill => !formData.tags.includes(skill))
+                            .filter(skill => !formData.skills.includes(skill))
                             .map((skill) => (
                               <SelectItem key={skill} value={skill}>
                                 {skill}
@@ -565,7 +582,6 @@ function TeamEditContent() {
                 </CardContent>
               </Card>
 
-              {/* 연락 방법 */}
               <Card>
                 <CardHeader>
                   <CardTitle>연락 방법</CardTitle>
@@ -608,9 +624,7 @@ function TeamEditContent() {
               </Card>
             </div>
 
-            {/* 사이드바 */}
             <div className="space-y-6">
-              {/* 팀장 정보 */}
               <Card>
                 <CardHeader>
                   <CardTitle>팀장 정보</CardTitle>
@@ -620,14 +634,12 @@ function TeamEditContent() {
                     <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
                       <span className="text-blue-600 font-bold text-xl">{user?.username?.[0] || ""}</span>
                     </div>
-                    <h3 className="font-medium">{user.username}</h3>
-                    <p className="text-sm text-gray-600">{user.email}</p>
-                    {/* <p className="text-sm text-gray-600 mt-1">{user.location || "위치 미설정"}</p> */}
+                    <h3 className="font-medium">{user?.username}</h3>
+                    <p className="text-sm text-gray-600">{user?.email}</p>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* 설정 */}
               <Card>
                 <CardHeader>
                   <CardTitle>팀 설정</CardTitle>
@@ -657,7 +669,6 @@ function TeamEditContent() {
                 </CardContent>
               </Card>
 
-              {/* 제출 버튼 */}
               <Card>
                 <CardContent className="p-4">
                   <Button type="submit" className="w-full" size="lg" disabled={isSaving}>

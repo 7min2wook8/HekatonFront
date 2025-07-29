@@ -15,6 +15,11 @@ import { useState, useEffect } from "react"
 
 export default function ContestsPage() {
   const [contests, setContests] = useState<any[]>([])
+  const [page, setPage] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+  const [totalElements, setTotalElements] = useState(0)
+  const [sortBy, setSortBy] = useState("endDate")
+  const [sortDir, setSortDir] = useState("asc")
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("전체")
   const [selectedLocation, setSelectedLocation] = useState("전체")
@@ -76,31 +81,31 @@ export default function ContestsPage() {
       if (searchTerm) {
         params.append('keyword', searchTerm);
       }
-      let categoryId = null;
-      //전체가 아닐 경우 선택된 카테고리 별로 분류
-      if (selectedCategory !== "전체") {
-        const foundCategory = categories.find(cat => cat.name === selectedCategory);
-        if (foundCategory) {
-          categoryId = foundCategory.id;
-        }
-      }
       if (selectedLocation !== "전체") {
         params.append('location', selectedLocation);
       }
       if (selectedStatus !== "전체") {
         params.append('status', selectedStatus);
       }
-      // 페이지네이션과 정렬 파라미터는 우선 기본값으로 설정하거나 추후 추가할 수 있습니다.
-      // params.append('page', '0');
-      // params.append('size', '10');
+
+      // 페이지네이션과 정렬 파라미터 추가
+      params.append('page', String(page));
+      params.append('size', '9'); // 한 페이지에 9개씩 표시
+      params.append('sortBy', sortBy);
+      params.append('sortDir', sortDir);
 
       try {
-        let url = `${API_GATEWAY_URL}/api/contests?${params.toString()}&size=30`;
+        let url = `${API_GATEWAY_URL}/api/contests/status`;
 
-      if (categoryId) {
-        url = `${API_GATEWAY_URL}/api/categories/${categoryId}/contests?${params.toString()}&size=30`;
-      }
-        const response = await fetch(url, {
+        // 카테고리 필터링 URL 처리
+        if (selectedCategory !== "전체") {
+          const foundCategory = categories.find(cat => cat.name === selectedCategory);
+          if (foundCategory) {
+            url = `${API_GATEWAY_URL}/api/categories/${foundCategory.id}/contests`;
+          }
+        }
+
+        const response = await fetch(`${url}?${params.toString()}`, {
           method: 'GET',
           credentials: 'include',
         });
@@ -111,14 +116,15 @@ export default function ContestsPage() {
 
         const data = await response.json();
         
-        // API 응답이 배열인지, 혹은 .content 프로퍼티에 배열이 있는지 확인합니다.
-        if (Array.isArray(data)) {
-          setContests(data);
-        } else if (data && Array.isArray(data.content)) {
+        if (data && Array.isArray(data.content)) {
           setContests(data.content);
+          setTotalPages(data.totalPages);
+          setTotalElements(data.totalElements);
         } else {
-          console.error("API 응답이 배열 또는 예상되는 객체 구조가 아닙니다:", data);
-          setContests([]); // 데이터가 없거나 형식이 맞지 않으면 빈 배열로 설정
+          console.error("API 응답이 예상되는 객체 구조가 아닙니다:", data);
+          setContests([]);
+          setTotalPages(0);
+          setTotalElements(0);
         }
 
       } catch (error: any) {
@@ -131,7 +137,7 @@ export default function ContestsPage() {
     };
 
     fetchContests();
-  }, [searchTerm, selectedCategory, selectedLocation, selectedStatus]); // 필터가 변경될 때마다 fetchContests 함수를 다시 호출합니다.
+  }, [searchTerm, selectedCategory, selectedLocation, selectedStatus, page, sortBy, sortDir, categories]); // 필터, 정렬, 페이지 변경 시 다시 호출
 
   // 서버에서 필터링을 하므로 클라이언트 측 필터링 로직은 더 이상 필요하지 않습니다.
   // 렌더링할 때 'contests'를 직접 사용합니다.
@@ -217,20 +223,49 @@ export default function ContestsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="전체">전체 상태</SelectItem>
-                  <SelectItem value="모집중">모집중</SelectItem>
-                  <SelectItem value="마감임박">마감임박</SelectItem>
-                  <SelectItem value="마감">마감</SelectItem>
+                  <SelectItem value="OPEN">모집중</SelectItem>
+                  <SelectItem value="CLOSING_SOON">마감임박</SelectItem>
+                  <SelectItem value="CLOSED">마감</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* 정렬 필터 */}
+              <Select value={`${sortBy},${sortDir}`} onValueChange={(value) => {
+                const [newSortBy, newSortDir] = value.split(',');
+                setSortBy(newSortBy);
+                setSortDir(newSortDir);
+              }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="정렬" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="endDate,asc">마감일 오름차순</SelectItem>
+                  <SelectItem value="endDate,desc">마감일 내림차순</SelectItem>
+                  <SelectItem value="startDate,asc">시작일 오름차순</SelectItem>
+                  <SelectItem value="startDate,desc">시작일 내림차순</SelectItem>
+                  <SelectItem value="createdAt,desc">최신순</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </CardContent>
         </Card>
 
-        {/* 결과 개수 */}
-        <div className="mb-6">
+        <div className="mb-6 flex justify-between items-center">
           <p className="text-gray-600">
-            총 <span className="font-semibold text-blue-600">{contests.length}</span>개의 공모전이 있습니다
+            총 <span className="font-semibold text-blue-600">{totalElements}</span>개의 공모전이 있습니다
           </p>
+          {/* 페이지네이션 */}
+          <div className="flex items-center gap-2">
+            <Button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}>
+              이전
+            </Button>
+            <span className="text-gray-600">
+              {page + 1} / {totalPages}
+            </span>
+            <Button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page === totalPages - 1}>
+              다음
+            </Button>
+          </div>
         </div>
 
         {/* 공모전 그리드 */}

@@ -344,9 +344,12 @@ export default function ContestDetailPage() {
                   className="w-full h-64 object-cover rounded-t-lg"
                 />
 
-                {/* 카테고리(구현중) */}
+                {/* 카테고리 */}
                 <div className="absolute top-4 left-4 flex gap-2">
-                  {contest.category && <Badge>{contest.category}</Badge>}
+                 {Array.isArray(contest.categories) && contest.categories.map((category:any) => (
+                  <Badge key={category.id}>{category.name}</Badge>
+                 ))}
+
                   {contest.status && (
                     <Badge className={getStatusColor(contest.status)}>
                       {contest.status}
@@ -355,7 +358,7 @@ export default function ContestDetailPage() {
                 </div>
                 <div className="absolute top-4 right-4 flex flex-col items-end gap-2">
                   <div className="flex gap-2">
-                    {/* 즐겨찾기 버튼(구현중) */}
+                    {/* 즐겨찾기 버튼 */}
                     <Button
                       variant="secondary"
                       size="sm"

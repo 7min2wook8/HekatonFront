@@ -116,8 +116,11 @@ export default function ContestsPage() {
 
         const data = await response.json();
         
+        console.log("response: ", response);
+        console.log("API 응답:", data);
+        console.log("카테고리:", categories);
         if (data && Array.isArray(data.content)) {
-          setContests(data.content);
+          setContests(data.content);          
           setTotalPages(data.totalPages);
           setTotalElements(data.totalElements);
         } else {
@@ -138,10 +141,6 @@ export default function ContestsPage() {
 
     fetchContests();
   }, [searchTerm, selectedCategory, selectedLocation, selectedStatus, page, sortBy, sortDir, categories]); // 필터, 정렬, 페이지 변경 시 다시 호출
-
-  // 서버에서 필터링을 하므로 클라이언트 측 필터링 로직은 더 이상 필요하지 않습니다.
-  // 렌더링할 때 'contests'를 직접 사용합니다.
-  const filteredContests = contests;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -247,10 +246,7 @@ export default function ContestsPage() {
                 </SelectContent>
               </Select>
             </div>
-          </CardContent>
-        </Card>
-
-        <div className="mb-6 flex justify-between items-center">
+            <div className="mb-6 flex justify-between items-center">
           <p className="text-gray-600">
             총 <span className="font-semibold text-blue-600">{totalElements}</span>개의 공모전이 있습니다
           </p>
@@ -267,6 +263,10 @@ export default function ContestsPage() {
             </Button>
           </div>
         </div>
+          </CardContent>
+        </Card>
+
+        
 
         {/* 공모전 그리드 */}
         {isLoading && <div className="text-center py-12 text-gray-500">공모전 목록을 불러오는 중...</div>}
@@ -283,7 +283,9 @@ export default function ContestsPage() {
                       className="w-full h-48 object-cover rounded-t-lg"
                     />
                     <div className="absolute top-2 left-2 flex gap-2">
-                      <Badge>{contest.category}</Badge>
+                      
+                      <Badge>{contest.categories}</Badge> 
+                      
                       <Badge variant={contest.status === "마감임박" ? "destructive" : "secondary"}>{contest.status}</Badge>
                     </div>
                   </div>

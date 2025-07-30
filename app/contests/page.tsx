@@ -284,7 +284,9 @@ export default function ContestsPage() {
                     />
                     <div className="absolute top-2 left-2 flex gap-2">
                       
-                      <Badge>{contest.categories}</Badge> 
+                      {Array.isArray(contest.categories) && contest.categories.map((category:any) => (
+                  <Badge key={category.id}>{category.name}</Badge>
+                 ))}
                       
                       <Badge variant={contest.status === "마감임박" ? "destructive" : "secondary"}>{contest.status}</Badge>
                     </div>
@@ -301,13 +303,13 @@ export default function ContestsPage() {
                         </div>
                         <div className="flex items-center">
                           <Users className="w-4 h-4 mr-1" />
-                          {contest.participants}명
+                          {contest.maxParticipants}명
                         </div>
                       </div>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center text-red-600">
                           <Clock className="w-4 h-4 mr-1" />
-                          {contest.deadline}
+                          종료일:{contest.endDate}
                         </div>
                         <div className="font-semibold text-blue-600">상금 {contest.prizeDescription}</div>
                       </div>

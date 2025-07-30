@@ -11,13 +11,16 @@ interface User {
   phoneNumber: string 
 }
 
-export interface Profile {    
+export interface Profile {   
+    userId: string 
     fullName : string
     bio : string
     profileImageUrl : string
     education : string
     experience : string
     portfolioUrl : string
+    isPublic?: boolean // 프로필 공개 여부
+    skills?: UserSkills[] // 사용자의 스킬 정보
 }
 
 export interface UserSkills{
@@ -54,6 +57,7 @@ interface AuthContextType {
   //프로필 데이터를 DB에 저장
   saveProfile: (profile: Profile) => Promise<{ success: boolean; message: string;}>  
   getOtherUserProfile :( userId : string ) => Promise<{ success: boolean; otherUserProfile?: Profile | null; message?: string  } | null>
+  getAllUserProfiles: () => Promise<{ success: boolean; message: string; data: Profile[] }>  
   signUp: (email: string, password: string, username: string, phone: string) => Promise<{ success: boolean; message: string }>
   login: (email: string, password: string) => Promise<{ success: boolean; message: string }>
   logout: () => void
@@ -286,13 +290,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   //프로필 데이터가 없을 경우
-  const FallbackProfile = (): Profile => ({  
+  const FallbackProfile = (): Profile => ({
+    userId: "",
     fullName: "",
     bio: "",
     profileImageUrl: "/placeholder.svg",
     education: "",
     experience: "",
     portfolioUrl: "",
+    isPublic: false, // 기본값으로 false 설정
   });
 
   //자신의 프로필 정보 불러오기
@@ -324,12 +330,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (profileData) { 
 
         const parsedProfile: Profile = {
+          userId: profileData.userId || user.id, // user.id를 기본값으로 사용
           fullName: profileData.fullName || "user",
           bio: profileData.bio || "",
           profileImageUrl: profileData.profileImageUrl || "/placeholder.svg",
           education: profileData.education || "",
           experience: profileData.experience || "",
           portfolioUrl: profileData.portfolioUrl || "",
+          isPublic: profileData.isPublic !== undefined ? profileData.isPublic : false, // isPublic이 없으면 기본값 false
         };
         
         return {
@@ -379,7 +387,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         profileImageUrl: profile?.profileImageUrl, //| 'https://example.com/profile.jpg',
                         education: profile?.education,
                         experience: profile?.experience,
-                        portfolioUrl: profile?.portfolioUrl //'https://example.com/portfolio'
+                        portfolioUrl: profile?.portfolioUrl, //'https://example.com/portfolio'
+                        isPublic: profile?.isPublic
                     })
                 });
 
@@ -428,12 +437,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (profileData) { 
 
         const parsedProfile: Profile = {
+          userId: profileData.userId,
           fullName: profileData.fullName,
           bio: profileData.bio,
           profileImageUrl: profileData.profileImageUrl,
           education: profileData.education ,
           experience: profileData.experience ,
           portfolioUrl: profileData.portfolioUrl,
+          isPublic: profileData.isPublic, // isPublic이 없으면 기본값 false
         };
 
         return {
@@ -462,8 +473,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
     }
-
   }
+  /*모든 사용자의 프로필을 가져옴*/
+  const getAllUserProfiles = async (): Promise<{ success: boolean; message: string; data: Profile[] }> => {
+    try {
+      const response = await fetch(`${API_GATEWAY_URL}/api/users/profiles`, {
+                    method: 'GET',
+                    credentials: 'include'
+      });      
+
+      if (!response.ok) {
+        return { success: false, message: "사용자 프로필 데이터를 불러오지 못했습니다.", data: [] }
+      }
+
+      const userSkillResponse = await fetch(`${API_GATEWAY_URL}/api/users/me/skills`, {
+                    method: 'GET',
+                    credentials: 'include'
+      });
+
+      const profilesData = await response.json();
+      const profiles: Profile[] = profilesData.map((profile: any) => ({
+        userId: profile.userId,
+        fullName: profile.fullName,
+        bio: profile.bio,
+        profileImageUrl: profile.profileImageUrl || "/placeholder.svg",
+        education: profile.education || "",
+        experience: profile.experience || "",
+        portfolioUrl: profile.portfolioUrl || "",
+        isPublic: profile.isPublic !== undefined ? profile.isPublic : false, // isPublic이 없으면 기본값 false
+      }));
+
+      return { success: true, message: "사용자 프로필 데이터를 성공적으로 불러왔습니다.", data: profiles }
+
+    } catch (error) {
+
+      console.error("사용자 프로필 데이터 불러오기 오류:", error)
+
+      return { success: false, message: "사용자 프로필 데이터를 불러오는 중 오류가 발생했습니다.", data: [] }
+
+    }
+  }
+
 
 
   //사용자가 등록한 스킬 정보를 가져옵니다.
@@ -492,7 +542,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // 데이터 파싱 (string → number 변환)
       const userSkills: UserSkills[] = rawSkills.map((item) => ({
         id: item.id,
-        userId: item.userId, // 또는 item.userID, 백엔드 응답 확인 필요
+        userId: item.userId,
         skillId: Number(item.skillId),
         proficiency: Number(item.proficiency),
         created_at: item.created_at,
@@ -577,10 +627,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         'Content-Type': 'application/json',
                     },
                     credentials: 'include',                   
-                });
+                });      
 
-                
-      
       if (!response.ok) {        
         return { success: false, message: "기술 데이터를 불러오기에 실패했습니다.", data : [] }
       }
@@ -592,8 +640,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         category: skill.category || "",
         description: skill.description || "",
       }));
-
-      //setArraySkills(allSkills)
 
       return { 
         success : true, 
@@ -625,7 +671,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     saveUserSkills,
     getSkills,
     getNcsCategory,
-    getOtherUserProfile, 
+    getOtherUserProfile,
+    getAllUserProfiles,
   }
   
 

@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Search, Users, MapPin, Calendar, Plus, MessageSquare, Star, UserPlus, Clock, Trophy, Eye } from 'lucide-react'
+import { Profile, Skills, useAuth, UserSkills } from "@/contexts/auth-context"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 
@@ -26,10 +27,13 @@ export default function TeamsPage() {
   const [errorTeams, setErrorTeams] = useState<string | null>(null)
 
   // 개인(팀원) 데이터를 위한 상태
-  const [individuals, setIndividuals] = useState<any[]>([])
+  const [individuals, setIndividuals] = useState<Profile[]>([])
   const [isLoadingIndividuals, setIsLoadingIndividuals] = useState(true)
   const [errorIndividuals, setErrorIndividuals] = useState<string | null>(null)
 
+  // 사용자 프로필 관련 API 호출
+  const { getOtherUserProfile, getAllUserProfiles, getSkills } = useAuth()
+     
   const API_GATEWAY_URL = 'http://localhost:8080';
 
   // 팀 정보 가져오기
@@ -106,20 +110,28 @@ export default function TeamsPage() {
       }
 
       try {
-        const response = await fetch(`${API_GATEWAY_URL}/api/individuals?${params.toString()}`, {
-          method: 'GET',
-          credentials: 'include',
-        })
+        // const skillsResponse = await getSkills()
+        // if (!skillsResponse.success) {
+        //   throw new Error(skillsResponse.message + "기술 스택을 불러오는 데 실패했습니다.")
+        // }
 
-        if (!response.ok) {
-          throw new Error("팀원 목록을 불러오는 데 실패했습니다.")
+        const profileResponse = await getAllUserProfiles()
+        if (!profileResponse.success) {
+          throw new Error(profileResponse.message + "팀원 목록을 불러오는 데 실패했습니다.")
         }
 
-        const data = await response.json()
+        
+        const data = profileResponse.data
+
+        data.forEach((user) => {
+          //user.skills = skillsResponse.data.filter((skill) => skill.userId === user.id)
+        })
+        
+
         if (Array.isArray(data)) {
           setIndividuals(data)
-        } else if (data && Array.isArray(data.content)) { // 스프링 데이터 JPA Pageable 응답 형식 가정
-          setIndividuals(data.content)
+        } else if (data && Array.isArray(data)) { // 스프링 데이터 JPA Pageable 응답 형식 가정
+          setIndividuals(data)
         } else {
           console.error("API 응답이 배열 또는 예상되는 객체 구조가 아닙니다:", data)
           setIndividuals([])
@@ -395,27 +407,23 @@ export default function TeamsPage() {
             {!isLoadingIndividuals && !errorIndividuals && individuals.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {individuals.map((person) => (
-                  <Card key={person.id} className="hover:shadow-lg transition-shadow">
+                  <Card key={person.userId} className="hover:shadow-lg transition-shadow">
                     <CardContent className="p-6">
                       <div className="text-center mb-4">
                         <Avatar className="w-16 h-16 mx-auto mb-3">
-                          <AvatarImage src={person.avatarUrl || "/placeholder.svg"} alt={person.name} />
-                          <AvatarFallback className="text-lg">{person.name[0]}</AvatarFallback>
+                          <AvatarImage src={/*person.avatarUrl ||*/ "/placeholder.svg"} alt={person.fullName} />
+                          <AvatarFallback className="text-lg">{person.fullName[0]}</AvatarFallback>
                         </Avatar>
-                        <h3 className="font-semibold text-lg">{person.name}</h3>
-                        <p className="text-gray-600 text-sm">{person.role}</p>
-                        <div className="flex items-center justify-center gap-4 mt-2 text-xs text-gray-500">
-                          <div className="flex items-center">
-                            <MapPin className="w-3 h-3 mr-1" />
-                            {person.location}
-                          </div>
+                        <h3 className="font-semibold text-lg">{person.fullName}</h3>
+                        <p className="text-gray-600 text-sm">{'N/A'}</p>
+                        <div className="flex items-center justify-center gap-4 mt-2 text-xs text-gray-500">                          
                           <div className="flex items-center">
                             <Clock className="w-3 h-3 mr-1" />
                             {person.experience}
                           </div>
                           <div className="flex items-center">
                             <Star className="w-3 h-3 mr-1 text-yellow-500" />
-                            {person.rating || 'N/A'}
+                            {'N/A'}
                           </div>
                         </div>
                       </div>
@@ -426,15 +434,15 @@ export default function TeamsPage() {
                       <div className="mb-4">
                         <div className="text-sm font-medium text-gray-900 mb-2">기술 스택</div>
                         <div className="flex flex-wrap gap-1">
-                          {person.skills && person.skills.map((skill: string) => (
-                            <Badge key={skill} variant="secondary" className="text-xs">
-                              {skill}
+                          {person.skills && person.skills.map((skill: UserSkills) => (
+                            <Badge key={skill.id} variant="secondary" className="text-xs">
+                              {skill.skillId}
                             </Badge>
                           ))}
                         </div>
                       </div>
 
-                      {/* 관심 분야 */}
+                      {/* 관심 분야
                       <div className="mb-4">
                         <div className="text-sm font-medium text-gray-900 mb-2">관심 분야</div>
                         <div className="flex flex-wrap gap-1">
@@ -444,28 +452,28 @@ export default function TeamsPage() {
                             </Badge>
                           ))}
                         </div>
-                      </div>
+                      </div> */}
 
                       {/* 상태 및 프로젝트 수 */}
-                      <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
+                      {/* <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
                         <div className="flex items-center">
                           <div className={`w-2 h-2 rounded-full mr-2 ${person.isAvailable ? 'bg-green-500' : 'bg-red-500'}`} />
                           {person.isAvailable ? '참여 가능' : '참여 불가'}
                         </div>
                         <div>{person.completedProjects || 0}개 프로젝트 완료</div>
-                      </div>
+                      </div> */}
 
                       {/* 액션 버튼 */}
                       <div className="flex gap-2">
                         <Button
                           className="flex-1"
                           size="sm"
-                          disabled={!person.isAvailable}
+                          disabled={!person.isPublic}
                         >
                           <MessageSquare className="w-4 h-4 mr-1" />
                           연락하기
                         </Button>
-                        <Link href={`/individuals/${person.id}`} className="flex-1">
+                        <Link href={`/individuals/${person.userId}`} className="flex-1">
                           <Button variant="outline" size="sm" className="w-full">
                             <Eye className="w-4 h-4 mr-1" />
                             프로필

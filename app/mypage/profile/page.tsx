@@ -45,12 +45,13 @@ function ProfileEditContent() {
    const [arraySkills, setArraySkills] = useState<Skills[]>([])
  
    const [profile, setProfile] = useState<Profile>({
-     fullName: "",
-     bio: "",
-     profileImageUrl: "/placeholder.svg",
-     education: "",
-     experience: "",
-     portfolioUrl: "",
+      userId: user?.id || "",
+      fullName: "",
+      bio: "",
+      profileImageUrl: "/placeholder.svg",
+      education: "",
+      experience: "",
+      portfolioUrl: "",
    })
  
    const [isSelectOpen, setIsSelectOpen] = useState(false); // Select 컴포넌트의 열림 상태를 관리하는 새 상태

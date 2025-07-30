@@ -34,7 +34,7 @@ import ProtectedRoute from "@/components/protected-route"
 
 function ProfileEditContent() {
    const { viewProfile, saveProfile, user, 
-     updateUser, viewUserSkills, saveUserSkills,  getSkills } = useAuth()
+    viewUserSkills, saveUserSkills,  getSkills } = useAuth()
 
    const [isLoading, setIsLoading] = useState(false)
  
@@ -143,18 +143,21 @@ function ProfileEditContent() {
       await new Promise((resolve) => setTimeout(resolve, 1000))
       
       // 스킬 변환
-    const userSkills: UserSkills[] = selectSkill.map(skill => ({
-      id:"",
-      userId: user.id, // 현재 로그인한 유저 ID
+    const userSkills: UserSkills[] = selectSkill.map((skill) => ({
+      userId: user.id,
       skillId: skill.id,
-      proficiency: 3, // 사용자가 선택할 수 있게 하려면 별도 상태로 관리
-      created_at: new Date().toISOString(),
+      skillName: skill.name,
+      skillCategory: skill.category,
+      skillDescription: skill.description,
+      category: skill.category,
+      description: skill.description,
+      proficiency: 3, // set a default or actual proficiency value if available
     }));
 
 
       const [saveProfileResult, saveUserSkillsResult] = await Promise.all([
         saveProfile(profile),
-        saveUserSkills(userSkills)
+        saveUserSkills(userSkills),
       ]);
 
       if (

@@ -24,11 +24,12 @@ export interface Profile {
 }
 
 export interface UserSkills{
-  id: string
   userId: string
   skillId: number
-  proficiency: number
-  created_at: string
+  skillName: string
+  category: string
+  description: string
+  
 }
 
 export interface Skills{  
@@ -486,12 +487,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, message: "사용자 프로필 데이터를 불러오지 못했습니다.", data: [] }
       }
 
-      const userSkillResponse = await fetch(`${API_GATEWAY_URL}/api/users/me/skills`, {
+      const userSkillResponse = await fetch(`${API_GATEWAY_URL}/api/users/skills`, {
                     method: 'GET',
                     credentials: 'include'
-      });
+      }); 
 
+      if (!userSkillResponse.ok) {
+        return { success: false, message: "사용자 스킬 데이터를 불러오지 못했습니다.", data: [] }
+      }else {
+        console.log("사용자 스킬 데이터 불러오기 성공")
+        
+      }
       const profilesData = await response.json();
+
+      const userSkillData = await userSkillResponse.json();
+
+      //console.log(userSkillData)
+
       const profiles: Profile[] = profilesData.map((profile: any) => ({
         userId: profile.userId,
         fullName: profile.fullName,
@@ -501,6 +513,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         experience: profile.experience || "",
         portfolioUrl: profile.portfolioUrl || "",
         isPublic: profile.isPublic !== undefined ? profile.isPublic : false, // isPublic이 없으면 기본값 false
+        skills: userSkillData.filter((skill: any) => skill.userId === profile.userId)
       }));
 
       return { success: true, message: "사용자 프로필 데이터를 성공적으로 불러왔습니다.", data: profiles }
@@ -540,15 +553,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const rawSkills: any[] = await response.json();
 
       // 데이터 파싱 (string → number 변환)
-      const userSkills: UserSkills[] = rawSkills.map((item) => ({
-        id: item.id,
-        userId: item.userId,
-        skillId: Number(item.skillId),
-        proficiency: Number(item.proficiency),
-        created_at: item.created_at,
+      const userSkills: UserSkills[] = rawSkills.map((skill: any) => ({
+        id: skill.id || "",
+        userId: skill.userId || user.id, // user.id를 기본값으로 사용
+        skillId: skill.skillId || 0, // skillId가 없으면 기본값
+        skillName: skill.skillName || "",
+        category: skill.category || "",
+        description: skill.description || "",
+        proficiency: skill.proficiency || 0, // 프로피션시 기본값
+        created_at: skill.created_at || new Date().toISOString(), // created_at이 없으면 현재 시간
+
       }));
 
-      
       return {
         success: true,
         message: "사용자 스킬 데이터를 불러왔습니다.",

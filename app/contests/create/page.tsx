@@ -18,6 +18,7 @@ import Footer from "@/components/footer"
 import ProtectedRoute from "@/components/protected-route"
 import { formatPhoneNumber } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth-context"
+import KakaoMap from "@/components/KakaoMap";
 
 
 
@@ -54,7 +55,29 @@ function ContestCreateContent() {
   const [isCategoriesLoading, setIsCategoriesLoading] = useState(true)
   const [categoriesError, setCategoriesError] = useState<string | null>(null)
 
+  const [mapCenter, setMapCenter] = useState({ lat: 37.5565, lng: 126.9700});
+  const [marker, setMarker] = useState<{ lat: number; lng: number; title: string} | null>(null);
+
   const API_GATEWAY_URL = 'http://localhost:8080';
+
+  //지도 테스트
+  const handleAddressSearch = (address: string) => {
+    if (!window.kakao || !address) return;
+
+    const geocoder = new window.kakao.maps.services.Geocoder();
+    geocoder.addressSearch(address, (result:any, status: any) => {
+      if (status === window.kakao.maps.services.Status.OK) {
+        const newCoords = {
+          lat : parseFloat(result[0].y),
+          lng : parseFloat(result[0].x),
+        };
+        setMapCenter(newCoords);
+        setMarker({...newCoords, title: result[0].address_name});
+        // 필요시 formData에 위도 경도 저장
+        // setFormData({ ...formData, latitude: newCoords.lat, longitude: newCoords.lng});
+      }
+    });
+  };
 
   //카테고리 API 호출
   useEffect(() => {
@@ -91,6 +114,7 @@ function ContestCreateContent() {
     fetchCategories();
   }, []);
 
+  //전달할 폼 데이터
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -114,6 +138,7 @@ function ContestCreateContent() {
   const [newTag, setNewTag] = useState("")
   const [newEligibility, setNewEligibility] = useState("")
   
+  //입력 조작
 const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
   setIsLoading(true);
@@ -203,7 +228,7 @@ const handleSubmit = async (e: React.FormEvent) => {
   }
 
   if (!user) return null
-
+// 공모전 등록 성공 시 출력 페이지
   if (success) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -239,7 +264,6 @@ const handleSubmit = async (e: React.FormEvent) => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-
       <div className="container mx-auto px-4 py-8">
         {/* 헤더 */}
         <div className="flex items-center justify-between mb-8">
@@ -579,6 +603,11 @@ const handleSubmit = async (e: React.FormEvent) => {
                       파일 선택 (준비중)
                     </Button>
                     <p className="text-xs text-gray-500 mt-2">JPG, PNG 파일만 가능 (최대 5MB)</p>
+                  </div>
+                  {/* 지도 API 불러오기 테스트용 div */}
+                  <KakaoMap latitude={mapCenter.lat} longitude={mapCenter.lng} markers={marker ? [marker] : []} />
+                  <div className="flex gap-2 mt-2">
+                    <Input placeholder="주소를 입력하여 위치 확인" onBlur={(e)=> handleAddressSearch(e.target.value)}></Input>
                   </div>
                 </CardContent>
               </Card>

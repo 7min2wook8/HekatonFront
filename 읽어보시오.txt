@@ -39,3 +39,8 @@ docker-compose up -d --build
 
 let webApp (serviceProvider: IServiceProvider) : HttpHandler
 아래에 새로운 기능 추가할시 내용 추가해야함(모르면 물어볼것!!)
+
+카카오맵 API KEY
+1. .env.local 파일 내부에 별도 키로 저장되어있음
+2. 카카오 지도 API는 순수 JS 라이브러리이므로, 아래 코드를 터미널에 입력하여 타입 스크립트 방식으로 변경된 라이브러리를 설치
+npm install kakao.maps.d.ts --save-dev --legacy-peer-deps

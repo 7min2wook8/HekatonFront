@@ -14,6 +14,7 @@ import Footer from "@/components/footer"
 import RegionFilter from "@/components/region-filter"
 
 export default function ContestsPage() {
+  // 상태 관리
   const [contests, setContests] = useState<any[]>([])
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
@@ -26,15 +27,15 @@ export default function ContestsPage() {
   const [selectedStatus, setSelectedStatus] = useState("전체")
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  
   const [categories, setCategories] = useState<any[]>([]);
   const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
   const [isRegionModalOpen, setIsRegionModalOpen] = useState(false);
 
+  // API URL
   const API_GATEWAY_URL = 'http://localhost:8080';
 
-  //카테고리 호출
+  // 카테고리 데이터 호출
   useEffect(() => {
     const fetchCategories = async () => {
       setIsCategoriesLoading(true);
@@ -67,7 +68,7 @@ export default function ContestsPage() {
     fetchCategories();
   }, []);
 
-  //동적 검색
+  // 공모전 데이터 동적 검색 및 필터링
   useEffect(() => {
     const fetchContests = async () => {
       setIsLoading(true);
@@ -134,11 +135,13 @@ export default function ContestsPage() {
     fetchContests();
   }, [searchTerm, selectedCategory, selectedLocations, selectedStatus, page, sortBy, sortDir, categories]);
 
+  // 페이지 렌더링
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
 
       <div className="container mx-auto px-4 py-8">
+        {/* 페이지 헤더 */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">공모전 찾기</h1>
@@ -152,6 +155,7 @@ export default function ContestsPage() {
           </Link>
         </div>
 
+        {/* 검색 및 필터링 UI */}
         <Card className="mb-8">
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -253,9 +257,7 @@ export default function ContestsPage() {
           </CardContent>
         </Card>
 
-        
-
-        {/* 공모전 그리드 */}
+        {/* 공모전 목록 그리드 */}
         {isLoading && <div className="text-center py-12 text-gray-500">공모전 목록을 불러오는 중...</div>}
         {error && <div className="text-center py-12 text-red-500">오류 발생: {error}</div>}
         {!isLoading && !error && contests.length > 0 && (
@@ -304,7 +306,7 @@ export default function ContestsPage() {
           </div>
         )}
 
-        {/* 빈 상태 */}
+        {/* 검색 결과 없음 표시 */}
         {!isLoading && !error && contests.length === 0 && (
           <div className="text-center py-12">
             <p className="text-gray-500 text-lg">검색 조건에 맞는 공모전이 없습니다.</p>

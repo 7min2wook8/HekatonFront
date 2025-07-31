@@ -60,7 +60,7 @@ export default function RegionFilter({ onSelectionChange }: RegionFilterProps) {
   const [selectedAll, setSelectedAll] = useState<{ [key: string]: boolean }>({})
 
   const provinces = Object.keys(regionData)
-
+//API 호출부
   useEffect(() => {
     const results: string[] = []
     selectedProvinces.forEach((province) => {

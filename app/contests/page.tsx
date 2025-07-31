@@ -1,28 +1,28 @@
 "use client"
 
-// import { useState } from "react"
+import { useState, useEffect } from "react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, MapPin, Clock, Users, Plus } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Search, MapPin, Clock, Users, Plus, Filter } from "lucide-react"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
-import Link from "next/link"
-
-import { useState, useEffect } from "react"
+import RegionFilter from "@/components/region-filter"
 
 export default function ContestsPage() {
   const [contests, setContests] = useState<any[]>([])
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
   const [totalElements, setTotalElements] = useState(0)
-  const [sortBy, setSortBy] = useState("endDate")
+  const [sortBy, setSortBy] = useState("registrationDeadline")
   const [sortDir, setSortDir] = useState("asc")
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("전체")
-  const [selectedLocation, setSelectedLocation] = useState("전체")
+  const [selectedLocations, setSelectedLocations] = useState<string[]>([])
   const [selectedStatus, setSelectedStatus] = useState("전체")
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -30,6 +30,7 @@ export default function ContestsPage() {
   const [categories, setCategories] = useState<any[]>([]);
   const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
+  const [isRegionModalOpen, setIsRegionModalOpen] = useState(false);
 
   const API_GATEWAY_URL = 'http://localhost:8080';
 
@@ -47,8 +48,6 @@ export default function ContestsPage() {
           throw new Error("카테고리 목록을 불러오는 데 실패했습니다.");
         }
         const data = await response.json();
-        console.log(data)
-        // API 응답에서 실제 카테고리 배열을 추출합니다.
         const categoriesArray = Array.isArray(data) ? data : data.content;
 
         if (Array.isArray(categoriesArray)) {
@@ -74,30 +73,26 @@ export default function ContestsPage() {
       setIsLoading(true);
       setError(null);
 
-      // URLSearchParams를 사용하여 쿼리 파라미터를 동적으로 구성합니다.
       const params = new URLSearchParams();
       
-      // 각 필터 상태에 따라 파라미터를 추가합니다. '전체'가 아닌 경우에만 추가합니다.
       if (searchTerm) {
         params.append('keyword', searchTerm);
-      }
-      if (selectedLocation !== "전체") {
-        params.append('location', selectedLocation);
       }
       if (selectedStatus !== "전체") {
         params.append('status', selectedStatus);
       }
+      if (selectedLocations.length > 0) {
+        selectedLocations.forEach(location => params.append('locations', location));
+      }
 
-      // 페이지네이션과 정렬 파라미터 추가
       params.append('page', String(page));
-      params.append('size', '9'); // 한 페이지에 9개씩 표시
+      params.append('size', '9');
       params.append('sortBy', sortBy);
       params.append('sortDir', sortDir);
 
       try {
         let url = `${API_GATEWAY_URL}/api/contests/status`;
 
-        // 카테고리 필터링 URL 처리
         if (selectedCategory !== "전체") {
           const foundCategory = categories.find(cat => cat.name === selectedCategory);
           if (foundCategory) {
@@ -116,9 +111,6 @@ export default function ContestsPage() {
 
         const data = await response.json();
         
-        console.log("response: ", response);
-        console.log("API 응답:", data);
-        console.log("카테고리:", categories);
         if (data && Array.isArray(data.content)) {
           setContests(data.content);          
           setTotalPages(data.totalPages);
@@ -133,21 +125,20 @@ export default function ContestsPage() {
       } catch (error: any) {
         console.error("공모전 데이터를 가져오는 중 오류 발생:", error);
         setError(error.message);
-        setContests([]); // 오류 발생 시 빈 배열로 설정
+        setContests([]);
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchContests();
-  }, [searchTerm, selectedCategory, selectedLocation, selectedStatus, page, sortBy, sortDir, categories]); // 필터, 정렬, 페이지 변경 시 다시 호출
+  }, [searchTerm, selectedCategory, selectedLocations, selectedStatus, page, sortBy, sortDir, categories]);
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
 
       <div className="container mx-auto px-4 py-8">
-        {/* 페이지 헤더 */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">공모전 찾기</h1>
@@ -161,22 +152,19 @@ export default function ContestsPage() {
           </Link>
         </div>
 
-        {/* 검색 및 필터 */}
         <Card className="mb-8">
           <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              {/* 검색 */}
-              <div className="md:col-span-2 relative">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div className="md:col-span-2 lg:col-span-5 relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
-                  placeholder="공모전 검색..."
+                  placeholder="관심있는 공모전을 검색해보세요..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
                 />
               </div>
 
-              {/* 카테고리 필터 */}
               <Select value={selectedCategory} onValueChange={setSelectedCategory} disabled={isCategoriesLoading}>
                 <SelectTrigger>
                   <SelectValue placeholder="카테고리" />
@@ -199,23 +187,24 @@ export default function ContestsPage() {
                 </SelectContent>
               </Select>
 
-              {/* 지역 필터 */}
-              <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-                <SelectTrigger>
-                  <SelectValue placeholder="지역" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="전체">전체 지역</SelectItem>
-                  <SelectItem value="서울">서울</SelectItem>
-                  <SelectItem value="부산">부산</SelectItem>
-                  <SelectItem value="대구">대구</SelectItem>
-                  <SelectItem value="인천">인천</SelectItem>
-                  <SelectItem value="광주">광주</SelectItem>
-                  <SelectItem value="대전">대전</SelectItem>
-                </SelectContent>
-              </Select>
+              <Dialog open={isRegionModalOpen} onOpenChange={setIsRegionModalOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="flex items-center justify-start text-left font-normal">
+                    <MapPin className="w-4 h-4 mr-2" />
+                    {selectedLocations.length > 0 ? `지역 (${selectedLocations.length}개 선택됨)` : "지역 선택"}
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl">
+                  <DialogHeader>
+                    <DialogTitle>지역 선택</DialogTitle>
+                  </DialogHeader>
+                  <RegionFilter onSelectionChange={setSelectedLocations} />
+                  <div className="flex justify-end pt-4">
+                    <Button onClick={() => setIsRegionModalOpen(false)}>완료</Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
 
-              {/* 상태 필터 */}
               <Select value={selectedStatus} onValueChange={setSelectedStatus}>
                 <SelectTrigger>
                   <SelectValue placeholder="상태" />
@@ -228,7 +217,6 @@ export default function ContestsPage() {
                 </SelectContent>
               </Select>
 
-              {/* 정렬 필터 */}
               <Select value={`${sortBy},${sortDir}`} onValueChange={(value) => {
                 const [newSortBy, newSortDir] = value.split(',');
                 setSortBy(newSortBy);
@@ -238,31 +226,30 @@ export default function ContestsPage() {
                   <SelectValue placeholder="정렬" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="endDate,asc">마감일 오름차순</SelectItem>
-                  <SelectItem value="endDate,desc">마감일 내림차순</SelectItem>
+                  <SelectItem value="registrationDeadline,asc">마감일 오름차순</SelectItem>
+                  <SelectItem value="registrationDeadline,desc">마감일 내림차순</SelectItem>
                   <SelectItem value="startDate,asc">시작일 오름차순</SelectItem>
                   <SelectItem value="startDate,desc">시작일 내림차순</SelectItem>
                   <SelectItem value="createdAt,desc">최신순</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div className="mb-6 flex justify-between items-center">
-          <p className="text-gray-600">
-            총 <span className="font-semibold text-blue-600">{totalElements}</span>개의 공모전이 있습니다
-          </p>
-          {/* 페이지네이션 */}
-          <div className="flex items-center gap-2">
-            <Button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}>
-              이전
-            </Button>
-            <span className="text-gray-600">
-              {page + 1} / {totalPages}
-            </span>
-            <Button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page === totalPages - 1}>
-              다음
-            </Button>
-          </div>
-        </div>
+            <div className="mt-6 mb-2 flex justify-between items-center">
+              <p className="text-sm text-gray-600">
+                총 <span className="font-semibold text-blue-600">{totalElements}</span>개의 공모전이 있습니다
+              </p>
+              <div className="flex items-center gap-2">
+                <Button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0} size="sm">
+                  이전
+                </Button>
+                <span className="text-sm text-gray-600">
+                  {totalPages > 0 ? `${page + 1} / ${totalPages}` : "0 / 0"}
+                </span>
+                <Button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1} size="sm">
+                  다음
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -275,7 +262,7 @@ export default function ContestsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {contests.map((contest: any) => (
               <Link href={`/contests/${contest.id}`} key={contest.id} className="block hover:shadow-lg transition-shadow rounded-lg">
-                <Card className="h-full">
+                <Card className="h-full flex flex-col">
                   <div className="relative">
                     <img
                       src={contest.image || "/placeholder.svg"}
@@ -283,35 +270,31 @@ export default function ContestsPage() {
                       className="w-full h-48 object-cover rounded-t-lg"
                     />
                     <div className="absolute top-2 left-2 flex gap-2">
-                      
                       {Array.isArray(contest.categories) && contest.categories.map((category:any) => (
-                  <Badge key={category.id}>{category.name}</Badge>
-                 ))}
-                      
+                        <Badge key={category.id}>{category.name}</Badge>
+                      ))}
                       <Badge variant={contest.status === "마감임박" ? "destructive" : "secondary"}>{contest.status}</Badge>
                     </div>
                   </div>
-                  <CardHeader>
+                  <CardHeader className="flex-grow">
                     <CardTitle className="text-lg line-clamp-2">{contest.title}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2 text-sm text-gray-600">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center">
-                          <MapPin className="w-4 h-4 mr-1" />
-                          {contest.location}
-                        </div>
-                        <div className="flex items-center">
-                          <Users className="w-4 h-4 mr-1" />
-                          {contest.maxParticipants}명
-                        </div>
+                      <div className="flex items-center">
+                        <MapPin className="w-4 h-4 mr-1" />
+                        {contest.location}
                       </div>
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center text-red-600">
-                          <Clock className="w-4 h-4 mr-1" />
-                          종료일:{contest.endDate}
+                        <div className="flex items-center">
+                          <Users className="w-4 h-4 mr-1" />
+                          최대 {contest.maxParticipants}명
                         </div>
-                        <div className="font-semibold text-blue-600">상금 {contest.prizeDescription}</div>
+                        <div className="font-semibold text-blue-600">{contest.prizeDescription}</div>
+                      </div>
+                      <div className="flex items-center text-red-600 pt-2">
+                        <Clock className="w-4 h-4 mr-1" />
+                        마감: {new Date(contest.registrationDeadline).toLocaleDateString()}
                       </div>
                     </div>
                   </CardContent>

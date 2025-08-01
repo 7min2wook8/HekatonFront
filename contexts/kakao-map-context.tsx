@@ -3,6 +3,8 @@
 import { createContext, useContext, useState, ReactNode } from "react";
 import Script from "next/script";
 
+// 카카오맵 API 스크립트 로딩 상태
+
 interface KakaoMapContextType {
   isLoaded: boolean;
 }

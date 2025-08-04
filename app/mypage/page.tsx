@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, use } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,82 +24,8 @@ import {
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import ProtectedRoute from "@/components/protected-route";
-import { useAuth } from "@/contexts/auth-context";
+import { useAuth, useTeam } from "@/contexts/auth-context";
 import { toast } from "sonner";
-
-// 샘플 데이터 (임시, API 연동 후에는 사용되지 않음)
-const participatingContests = [
-  {
-    id: 1,
-    title: "2025 스타트업 아이디어 공모전",
-    category: "창업",
-    status: "진행중",
-    deadline: "2025-02-28",
-    image: "/placeholder.svg?height=150&width=200",
-    progress: 65,
-    teamMembers: 3,
-  },
-  {
-    id: 2,
-    title: "모바일 앱 개발 공모전",
-    category: "IT",
-    status: "제출완료",
-    deadline: "2025-03-12",
-    image: "/placeholder.svg?height=150&width=200",
-    progress: 100,
-    teamMembers: 4,
-  },
-];
-
-const appliedContests = [
-  {
-    id: 3,
-    title: "친환경 제품 디자인 공모전",
-    category: "디자인",
-    status: "심사중",
-    appliedDate: "2025-01-20",
-    image: "/placeholder.svg?height=150&width=200",
-  },
-  {
-    id: 4,
-    title: "청년 정책 제안 공모전",
-    category: "정책",
-    status: "대기중",
-    appliedDate: "2025-01-18",
-    image: "/placeholder.svg?height=150&width=200",
-  },
-];
-
-// 이전에 있던 '받은 신청' 데이터는 '받은 초대장' 데이터로 대체됩니다.
-// 따라서 아래 코드는 더 이상 사용되지 않습니다.
-// const receivedApplications = [ ... ];
-
-const notifications = [
-  {
-    id: 1,
-    type: "contest",
-    title: "공모전 마감 알림",
-    message: "2025 스타트업 아이디어 공모전 마감이 7일 남았습니다.",
-    time: "2시간 전",
-    isRead: false,
-  },
-  {
-    id: 2,
-    type: "team",
-    title: "팀 가입 승인",
-    message: "모바일 앱 개발 공모전 팀에 가입이 승인되었습니다.",
-    time: "1일 전",
-    isRead: true,
-  },
-  {
-    id: 3,
-    type: "application",
-    title: "새로운 팀원 신청",
-    message: "김철수님이 AI 혁신 아이디어 공모전 팀에 가입을 신청했습니다.",
-    time: "2일 전",
-    isRead: false,
-  },
-];
 
 const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8080";
 
@@ -125,6 +51,7 @@ function MyPageContent() {
   const [activeTab, setActiveTab] = useState("overview");
 
   const { user } = useAuth();
+  const { Teams, getMyTeams } = useTeam();
   const [favoriteContests, setFavoriteContests] = useState<FavoriteContest[]>(
     []
   );
@@ -134,12 +61,16 @@ function MyPageContent() {
   const [favoritesError, setFavoritesError] = useState<string | null>(null);
   const [invitationsError, setInvitationsError] = useState<string | null>(null);
 
+
+  const [participatingTeams, setParticipatingTeams] = useState<typeof Teams>([]);
+  const [appliedTeams, setAppliedTeams] = useState<typeof Teams>([]);
+
   const fetchInvitations = useCallback(async () => {
     if (!user?.id) return;
 
     setIsLoadingInvitations(true);
     setInvitationsError(null);
-
+    
     try {
       const response = await fetch(
         `${API_GATEWAY_URL}/api/invitations/users/${user.id}`,
@@ -200,6 +131,33 @@ function MyPageContent() {
 
     fetchFavoriteContests();
   }, [user]);
+
+  useEffect(() => {
+    const fetchParticipatingTeams = async () => {
+      if (!user?.id) return;
+      try {
+        const teams = await getMyTeams();
+
+        if (!teams) {
+          console.error("팀 목록을 불러오는 데 실패했습니다.");
+          setParticipatingTeams([]);
+          return;
+        }        
+
+        // 참여 중인 팀 목록 필터링
+        const userParticipatingTeams = Array.isArray(teams.data) ? teams.data : [];
+
+        // 상태 업데이트
+        setParticipatingTeams(userParticipatingTeams);
+
+      } catch (error) {
+        console.error("참여 중인 팀 목록 불러오기 오류:", error);
+        setParticipatingTeams([]);
+      }
+    };
+
+    fetchParticipatingTeams();
+  }, [user, getMyTeams]);
 
   const handleInvitationResponse = async (invitationId: string, action: "accept" | "reject") => {
     if (!user?.id) {
@@ -360,8 +318,8 @@ function MyPageContent() {
         >
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">개요</TabsTrigger>
-            <TabsTrigger value="participating">참여 중인 공모전</TabsTrigger>
-            <TabsTrigger value="applied">신청한 공모전</TabsTrigger>
+            <TabsTrigger value="participating">참여 중인 팀 목록</TabsTrigger>
+            <TabsTrigger value="applied">신청한 팀 목록</TabsTrigger>
             <TabsTrigger value="applications">받은 초대장</TabsTrigger>
           </TabsList>
 
@@ -372,16 +330,16 @@ function MyPageContent() {
               <Card>
                 <CardContent className="p-6 text-center">
                   <Trophy className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-gray-900">2</div>
-                  <div className="text-sm text-gray-600">참여 중인 공모전</div>
+                  <div className="text-2xl font-bold text-gray-900">{participatingTeams.length}</div>
+                  <div className="text-sm text-gray-600">참여 중인 팀 목록</div>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardContent className="p-6 text-center">
                   <Clock className="w-8 h-8 text-blue-500 mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-gray-900">2</div>
-                  <div className="text-sm text-gray-600">신청한 공모전</div>
+                  <div className="text-2xl font-bold text-gray-900">{appliedTeams.length}</div>
+                  <div className="text-sm text-gray-600">신청한 팀 목록</div>
                 </CardContent>
               </Card>
 
@@ -455,56 +413,56 @@ function MyPageContent() {
             </Card>
           </TabsContent>
 
-          {/* 참여 중인 공모전 탭 */}
+          {/* 참여 중인 팀 목록 탭 */}
           <TabsContent value="participating" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {participatingContests.map((contest) => (
+              {participatingTeams.map((team) => (
                 <Card
-                  key={contest.id}
+                  key={team.id}
                   className="hover:shadow-lg transition-shadow"
                 >
                   <div className="relative">
                     <img
-                      src={contest.image || "/placeholder.svg"}
-                      alt={contest.title}
+                      src={/*team.logoURL ||*/ "/placeholder.svg"}
+                      alt={team.allow_direct_apply ? team.name : "팀 로고"}
                       className="w-full h-48 object-cover rounded-t-lg"
                     />
                     <Badge className="absolute top-2 left-2">
-                      {contest.category}
+                      {team.category_ids_json}
                     </Badge>
                     <Badge
                       className={`absolute top-2 right-2 ${getStatusColor(
-                        contest.status
+                        team.allow_direct_apply ? "진행중" : "대기중"
                       )}`}
                     >
-                      {contest.status}
+                      {team.allow_direct_apply ? "진행중" : "대기중"}
                     </Badge>
                   </div>
                   <CardHeader>
-                    <CardTitle className="text-lg">{contest.title}</CardTitle>
+                    <CardTitle className="text-lg">{team.name}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
                       <div className="flex items-center justify-between text-sm text-gray-600">
                         <div className="flex items-center">
                           <Clock className="w-4 h-4 mr-1" />
-                          마감: {contest.deadline}
+                          {/* 마감: {team.deadline} */}
                         </div>
                         <div className="flex items-center">
                           <Users className="w-4 h-4 mr-1" />
-                          팀원 {contest.teamMembers}명
+                          팀원 {team.max_members}명
                         </div>
                       </div>
 
                       <div>
                         <div className="flex justify-between text-sm mb-1">
                           <span>진행률</span>
-                          <span>{contest.progress}%</span>
+                          {/* <span>{team.progress}%</span> */}
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
                           <div
                             className="bg-blue-600 h-2 rounded-full transition-all"
-                            style={{ width: `${contest.progress}%` }}
+                            style={{ width: `${100}%` }}
                           />
                         </div>
                       </div>
@@ -529,40 +487,40 @@ function MyPageContent() {
             </div>
           </TabsContent>
 
-          {/* 신청한 공모전 탭 */}
+          {/* 신청한 팀 목록 */}
           <TabsContent value="applied" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {appliedContests.map((contest) => (
+              {appliedTeams.map((team) => (
                 <Card
-                  key={contest.id}
+                  key={team.id}
                   className="hover:shadow-lg transition-shadow"
                 >
                   <div className="relative">
                     <img
-                      src={contest.image || "/placeholder.svg"}
-                      alt={contest.title}
+                      src={/*team.image ||*/ "/placeholder.svg"}
+                      alt={team.name}
                       className="w-full h-48 object-cover rounded-t-lg"
                     />
                     <Badge className="absolute top-2 left-2">
-                      {contest.category}
+                      {team.category_ids_json}
                     </Badge>
                     <Badge
                       className={`absolute top-2 right-2 ${getStatusColor(
-                        contest.status
+                        team.allow_direct_apply ? "진행중" : "대기중"
                       )}`}
                     >
-                      {contest.status}
+                      {team.allow_direct_apply ? "진행중" : "대기중"}
                     </Badge>
                   </div>
                   <CardHeader>
-                    <CardTitle className="text-lg">{contest.title}</CardTitle>
+                    <CardTitle className="text-lg">{team.name}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
                       <div className="text-sm text-gray-600">
                         <div className="flex items-center">
                           <Calendar className="w-4 h-4 mr-1" />
-                          신청일: {contest.appliedDate}
+                          신청일: {team.updated_at.toString()}
                         </div>
                       </div>
 

@@ -1,7 +1,8 @@
 "use client"
-
+//0804 -참여 중인 팀 목록, 신청한 팀 목록 구현하기
 import { createContext, SetStateAction, useContext, useEffect, useState, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
+import { UUID } from "crypto"
 
 
 interface User {
@@ -49,6 +50,61 @@ export interface NcsCategory{
   
 }
 
+interface TeamDatas{
+  id: UUID
+  name: string
+  description: string
+  reader_id: UUID
+  contest_id: UUID
+  is_recruiting: boolean
+  is_public: boolean
+  max_members: number
+  created_at: Date
+  updated_at: Date
+  allow_direct_apply: boolean
+  category_ids_json: string[]
+  contact_info: string
+  contact_method: string
+  created_by_user_id: UUID
+  location: string
+  needed_roles_json: string[]
+  requirements: string[]
+  skills_json: string[]
+
+}
+
+interface TeamContextType{
+  Teams: TeamDatas[] // 팀 목록
+  isLoading: boolean
+  setIsLoading: (isLoading: boolean) => void
+  //팀 정보 조회
+  getTeam: (teamId: UUID) => Promise<{ success: boolean; message: string; team: TeamDatas | null }>
+  //팀 생성
+  createTeam: (teamData: TeamDatas) => Promise<{ success: boolean; message: string; team: TeamDatas | null }>
+  //팀 수정
+  updateTeam: (teamId: UUID, teamData: Partial<TeamDatas>) => Promise<{ success: boolean; message: string; team: TeamDatas | null }>
+  //팀 삭제
+  deleteTeam: (teamId: UUID) => Promise<{ success: boolean; message: string }>
+  //팀 참여 신청
+  applyToTeam: (teamId: UUID) => Promise<{ success: boolean; message: string }>
+  //팀 참여 승인
+  approveTeamApplication: (teamId: UUID, userId: UUID) => Promise<{ success: boolean; message: string }>
+  //팀 참여 거절
+  rejectTeamApplication: (teamId: UUID, userId: UUID) => Promise<{ success: boolean; message: string }>
+  //팀 탈퇴
+  leaveTeam: (teamId: UUID) => Promise<{ success: boolean; message: string }>
+  //팀장 변경
+  changeTeamLeader: (teamId: UUID, newLeaderId: UUID) => Promise<{ success: boolean; message: string }>
+  //팀 목록 조회
+  getAllTeams: () => Promise<{ success: boolean; message: string; data: TeamDatas[] }>
+  //사용자가 속한 팀 목록 조회
+  getMyTeams: () => Promise<{ success: boolean; message: string; data: TeamDatas[] }>
+  //사용자가 신청한 팀 목록 조회
+  getAppliedTeams: () => Promise<{ success: boolean; message: string; data: TeamDatas[] }>
+  //팀원 목록 조회
+  getTeamMembers: (teamId: UUID) => Promise<{ success: boolean; message: string; data: User[] }>
+
+}
 
 interface AuthContextType {
   user: User | null 
@@ -70,10 +126,15 @@ interface AuthContextType {
   
 }
 
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
+  // 팀 컨텍스트 생성
+const TeamContext = createContext<TeamContextType | undefined>(undefined)
 
 const AUTH_SERVER_URL = 'http://localhost:60000'; // auth-server 직접 호출
 const API_GATEWAY_URL = 'http://localhost:8080'; // api-gateway 호출
+const Team_GATEWAY_URL = 'http://localhost:8086'; // api-gateway 호출
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)    
@@ -408,7 +469,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
   }
-
   /*
     특정 사용자의 프로필 조회
     프로필이 없으면 null 리턴
@@ -526,9 +586,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     }
   }
-
-
-
   //사용자가 등록한 스킬 정보를 가져옵니다.
   const viewUserSkills = async (): Promise< { success: boolean; message: string; data: UserSkills[] | [] }> => {
     //사용자 정보 체크
@@ -691,14 +748,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const value: AuthContextType = {
+    //사용자 정보 관련 기능
     user,
     isLoading,
     isAuthenticated: !!user && !isLoading, // user가 존재하고 로딩 중이 아닐 때 인증됨
     signUp,
-    viewProfile,
-    saveProfile,
     login,
     logout,
+    viewProfile,
+    saveProfile,
     updateUser,
     viewUserSkills,
     saveUserSkills,
@@ -707,10 +765,109 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     getOtherUserProfile,
     getAllUserProfiles,
   }
-  
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  
 }
+
+export function TeamProvider({ children }: { children: React.ReactNode }) {
+
+  const teamContextValue: TeamContextType = {
+    Teams: [], // 초기값은 빈 배열로 설정
+    isLoading: false,
+    setIsLoading: () => { },
+    getTeam: async (teamId: UUID) => {
+      return { success: false, message: "팀 정보를 불러오는 기능은 아직 구현되지 않았습니다.", team: null }
+    },
+    createTeam: function (teamData: TeamDatas): Promise<{ success: boolean; message: string; team: TeamDatas | null }> {
+      throw new Error("Function not implemented.")
+    },
+    updateTeam: function (teamId: UUID, teamData: Partial<TeamDatas>): Promise<{ success: boolean; message: string; team: TeamDatas | null }> {
+      throw new Error("Function not implemented.")
+    },
+    deleteTeam: function (teamId: UUID): Promise<{ success: boolean; message: string }> {
+      throw new Error("Function not implemented.")
+    },
+    applyToTeam: function (teamId: UUID): Promise<{ success: boolean; message: string }> {
+      throw new Error("Function not implemented.")
+    },
+    approveTeamApplication: function (teamId: UUID, userId: UUID): Promise<{ success: boolean; message: string }> {
+      throw new Error("Function not implemented.")
+    },
+    rejectTeamApplication: function (teamId: UUID, userId: UUID): Promise<{ success: boolean; message: string }> {
+      throw new Error("Function not implemented.")
+    },
+    leaveTeam: function (teamId: UUID): Promise<{ success: boolean; message: string }> {
+      throw new Error("Function not implemented.")
+    },
+    changeTeamLeader: function (teamId: UUID, newLeaderId: UUID): Promise<{ success: boolean; message: string }> {
+      throw new Error("Function not implemented.")
+    },
+    getAllTeams: function (): Promise<{ success: boolean; message: string; data: TeamDatas[] }> {
+      throw new Error("Function not implemented.")
+    },
+    getMyTeams: function (): Promise<{ success: boolean; message: string; data: TeamDatas[] }> {
+       try {
+        const response = fetch(`${Team_GATEWAY_URL}/api/teams`, {
+          method: 'GET',
+          credentials: 'include' // JWT 쿠키 포함
+        });
+        return response.then(async (res) => {
+          if (!res.ok) {
+            const msg = await res.text()
+            return { success: false, message: msg || "팀 목록을 불러오지 못했습니다.", data: [] }
+          }
+          const data = await res.json()          
+
+          const teams: TeamDatas[] = data.content.map((team: any) => ({
+            id: team.id,
+            name: team.name,
+            description: team.description,
+            reader_id: team.reader_id,
+            contest_id: team.contest_id,
+            is_recruiting: team.is_recruiting,
+            is_public: team.is_public,
+            max_members: team.max_members,
+            created_at: new Date(team.created_at),
+            updated_at: new Date(team.updated_at),
+            allow_direct_apply: team.allow_direct_apply,
+            category_ids_json: team.category_ids_json || [],
+            contact_info: team.contact_info || "",
+            contact_method: team.contact_method || "",
+            created_by_user_id: team.created_by_user_id,
+            location: team.location || "",
+            needed_roles_json: team.needed_roles_json || [],
+            requirements: team.requirements || [],
+            skills_json: team.skills_json || []
+          }))
+
+
+          return { success: true, message: "팀 목록을 성공적으로 불러왔습니다.", data: teams }
+        })
+      } catch (error) {
+        console.error("팀 목록 불러오기 오류:", error)
+        return Promise.resolve({
+          success: false,
+          message: "팀 목록을 불러오는 중 오류가 발생했습니다.",
+          data: []
+        })
+      }
+    },
+    getAppliedTeams: function (): Promise<{ success: boolean; message: string; data: TeamDatas[] }> {
+      throw new Error("Function not implemented.")
+    },
+    getTeamMembers: function (teamId: UUID): Promise<{ success: boolean; message: string; data: User[] }> {
+      throw new Error("Function not implemented.")
+    }
+  }
+
+  return (
+    <TeamContext.Provider value={teamContextValue}>
+      {children}
+    </TeamContext.Provider>
+  )
+}
+
 
 export function useAuth() {
   const context = useContext(AuthContext)
@@ -720,3 +877,10 @@ export function useAuth() {
   return context
 } 
 
+export function useTeam() {
+  const context = useContext(TeamContext)
+  if (context === undefined) {
+    throw new Error("useTeam must be used within a TeamProvider")
+  }
+  return context
+}

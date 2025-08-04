@@ -88,6 +88,21 @@ function TeamCreateContent() {
       return
     }
 
+    // ⭐️ 수정된 부분: 필수 입력 필드 유효성 검사
+    const { name, description, contestId, location } = formData;
+    if (!name || !description || !contestId || !location) {
+      setError("팀명, 팀 소개, 참가 공모전, 활동 지역은 필수 입력 항목입니다.");
+      setIsLoading(false);
+      return;
+    }
+
+    // ⭐️ 추가된 부분: 모집 정보 유효성 검사
+    if (formData.neededRoles.length === 0 && formData.skills.length === 0 && formData.requirements.trim() === "") {
+        setError("모집 정보(모집하는 역할, 기술 스택, 지원 요구사항 중 하나)를 입력해주세요.");
+        setIsLoading(false);
+        return;
+    }
+    
     try {
       const payload = {
         ...formData,

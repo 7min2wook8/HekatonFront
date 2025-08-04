@@ -135,7 +135,6 @@ function ProfileEditContent() {
       return;
     }
     setIsLoading(true)
-    //setSuccess(false)
 
     try {
       
@@ -166,8 +165,6 @@ function ProfileEditContent() {
       ) {
 
         console.log("프로필 업데이트 성공:")
-        //setSuccess(true)
-        //setTimeout(() => setSuccess(false), 3000)
         router.push("/mypage")
       }
       else{
@@ -408,6 +405,15 @@ function ProfileEditContent() {
                 <h3 className="text-lg font-semibold flex items-center"><Code className="w-5 h-5 mr-2" />추가 정보 (선택)</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
+                    <Label htmlFor="name">이름</Label>
+                    <Input
+                      id="name"
+                      value={profile.fullName}
+                      onChange={(e) => setProfile({ ...profile, fullName: e.target.value })}
+                      placeholder="예: 홍길동"
+                    />
+                  </div>                  
+                  <div className="space-y-2">
                     <Label htmlFor="education">학력</Label>
                     <Input
                       id="education"
@@ -425,15 +431,15 @@ function ProfileEditContent() {
                       placeholder="예: 프론트엔드 개발자 2년"
                     />
                   </div>
-                  {/* <div className="space-y-2">
+                  <div className="space-y-2">
                     <Label htmlFor="portfolio">포트폴리오 URL</Label>
                     <Input
                       id="portfolio"
-                      value={profile.portfolio}
-                      onChange={(e) => setProfile({ ...profile, portfolio: e.target.value })}
+                      value={profile.portfolioUrl}
+                      onChange={(e) => setProfile({ ...profile, portfolioUrl: e.target.value })}
                       placeholder="https://portfolio.example.com"
                     />
-                  </div> */}
+                  </div>
                   {/* <div className="space-y-2">
                     <Label htmlFor="github">GitHub URL</Label>
                     <Input

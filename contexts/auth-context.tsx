@@ -332,7 +332,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const parsedProfile: Profile = {
           userId: profileData.userId || user.id, // user.id를 기본값으로 사용
-          fullName: profileData.fullName || "user",
+          fullName: profileData.fullName || "",
           bio: profileData.bio || "",
           profileImageUrl: profileData.profileImageUrl || "/placeholder.svg",
           education: profileData.education || "",
@@ -434,7 +434,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const profileData = await response.json()     
-      //console.log("profileData : " + profileData.portfolioUrl)
+ 
       if (profileData) { 
 
         const parsedProfile: Profile = {

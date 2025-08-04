@@ -32,7 +32,7 @@ export default function TeamsPage() {
   const [errorIndividuals, setErrorIndividuals] = useState<string | null>(null)
 
   // 사용자 프로필 관련 API 호출
-  const { getOtherUserProfile, getAllUserProfiles, getSkills } = useAuth()
+  const { getAllUserProfiles } = useAuth()
      
   const API_GATEWAY_URL = 'http://localhost:8080';
 
@@ -116,6 +116,7 @@ export default function TeamsPage() {
         // }
 
         const profileResponse = await getAllUserProfiles()
+        
         if (!profileResponse.success) {
           throw new Error(profileResponse.message + "팀원 목록을 불러오는 데 실패했습니다.")
         }
@@ -123,11 +124,7 @@ export default function TeamsPage() {
         
         const data = profileResponse.data
 
-        data.forEach((user) => {
-          //user.skills = skillsResponse.data.filter((skill) => skill.userId === user.id)
-        })
-        
-
+        console.log("팀원 데이터:", data)
         if (Array.isArray(data)) {
           setIndividuals(data)
         } else if (data && Array.isArray(data)) { // 스프링 데이터 JPA Pageable 응답 형식 가정
@@ -142,6 +139,7 @@ export default function TeamsPage() {
         setIndividuals([])
       } finally {
         setIsLoadingIndividuals(false)
+        console.log(individuals)
       }
     }
 
@@ -435,10 +433,10 @@ export default function TeamsPage() {
                         <div className="text-sm font-medium text-gray-900 mb-2">기술 스택</div>
                         <div className="flex flex-wrap gap-1">
                           {person.skills && person.skills.map((skill: UserSkills) => (
-                            <Badge key={skill.id} variant="secondary" className="text-xs">
-                              {skill.skillId}
-                            </Badge>
-                          ))}
+                              <Badge key={skill.skillId} variant="secondary" className="text-xs">
+                                {skill.skillName}
+                              </Badge>
+                            ))}
                         </div>
                       </div>
 

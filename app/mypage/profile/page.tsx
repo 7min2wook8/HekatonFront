@@ -34,7 +34,7 @@ import ProtectedRoute from "@/components/protected-route"
 
 function ProfileEditContent() {
    const { viewProfile, saveProfile, user, 
-     updateUser, viewUserSkills, saveUserSkills,  getSkills } = useAuth()
+    viewUserSkills, saveUserSkills,  getSkills } = useAuth()
 
    const [isLoading, setIsLoading] = useState(false)
  
@@ -135,7 +135,6 @@ function ProfileEditContent() {
       return;
     }
     setIsLoading(true)
-    //setSuccess(false)
 
     try {
       
@@ -143,18 +142,21 @@ function ProfileEditContent() {
       await new Promise((resolve) => setTimeout(resolve, 1000))
       
       // 스킬 변환
-    const userSkills: UserSkills[] = selectSkill.map(skill => ({
-      id:"",
-      userId: user.id, // 현재 로그인한 유저 ID
+    const userSkills: UserSkills[] = selectSkill.map((skill) => ({
+      userId: user.id,
       skillId: skill.id,
-      proficiency: 3, // 사용자가 선택할 수 있게 하려면 별도 상태로 관리
-      created_at: new Date().toISOString(),
+      skillName: skill.name,
+      skillCategory: skill.category,
+      skillDescription: skill.description,
+      category: skill.category,
+      description: skill.description,
+      proficiency: 3, // set a default or actual proficiency value if available
     }));
 
 
       const [saveProfileResult, saveUserSkillsResult] = await Promise.all([
         saveProfile(profile),
-        saveUserSkills(userSkills)
+        saveUserSkills(userSkills),
       ]);
 
       if (
@@ -163,8 +165,6 @@ function ProfileEditContent() {
       ) {
 
         console.log("프로필 업데이트 성공:")
-        //setSuccess(true)
-        //setTimeout(() => setSuccess(false), 3000)
         router.push("/mypage")
       }
       else{
@@ -405,6 +405,15 @@ function ProfileEditContent() {
                 <h3 className="text-lg font-semibold flex items-center"><Code className="w-5 h-5 mr-2" />추가 정보 (선택)</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
+                    <Label htmlFor="name">이름</Label>
+                    <Input
+                      id="name"
+                      value={profile.fullName}
+                      onChange={(e) => setProfile({ ...profile, fullName: e.target.value })}
+                      placeholder="예: 홍길동"
+                    />
+                  </div>                  
+                  <div className="space-y-2">
                     <Label htmlFor="education">학력</Label>
                     <Input
                       id="education"
@@ -422,15 +431,15 @@ function ProfileEditContent() {
                       placeholder="예: 프론트엔드 개발자 2년"
                     />
                   </div>
-                  {/* <div className="space-y-2">
+                  <div className="space-y-2">
                     <Label htmlFor="portfolio">포트폴리오 URL</Label>
                     <Input
                       id="portfolio"
-                      value={profile.portfolio}
-                      onChange={(e) => setProfile({ ...profile, portfolio: e.target.value })}
+                      value={profile.portfolioUrl}
+                      onChange={(e) => setProfile({ ...profile, portfolioUrl: e.target.value })}
                       placeholder="https://portfolio.example.com"
                     />
-                  </div> */}
+                  </div>
                   {/* <div className="space-y-2">
                     <Label htmlFor="github">GitHub URL</Label>
                     <Input

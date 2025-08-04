@@ -364,16 +364,16 @@ function TeamDetailPageContent() {
           </div>
           {isLeader && (
             <div className="flex gap-2">
+              <Button variant="default" onClick={() => setIsInviteModalOpen(true)}>
+                <Users className="w-4 h-4 mr-2" />
+                팀원 초대하기
+              </Button>
               <Link href={`/teams/${team.id}/edit`}>
                 <Button variant="outline">
                   <Edit className="w-4 h-4 mr-2" />
                   팀 수정
                 </Button>
               </Link>
-              <Button variant="default" onClick={() => setIsInviteModalOpen(true)}>
-                <Users className="w-4 h-4 mr-2" />
-                팀원 초대하기
-              </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" disabled={isDeleting}>

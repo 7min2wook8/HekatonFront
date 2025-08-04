@@ -589,7 +589,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         success: false,
         message: "사용자 정보가 없습니다.",        
       }
-      
+      console.log("사용자 스킬 정보 저장 요청:", skills)
+
+      if (skills.length === 0) {
+        return {
+          success: false,
+          message: "저장할 스킬 정보가 없습니다.",
+        }
+      }
+
+
+    const requestBody = {
+    userId: user.id,
+    skills: skills.map(skill => ({
+      skillId: skill.skillId,
+      proficiency: 3, // ← 예시. 실제론 사용자 입력값이 있어야 함
+    })),
+  };
 
     try {
       //데이터 요청
@@ -599,14 +615,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     headers: {
                       'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(skills), // 💡 핵심: skills 배열 그대로 전송
+                    body: JSON.stringify(requestBody), // 💡 핵심: skills 배열 그대로 전송
       });
      
       //데이터가 없으면
       if (!response.ok) {
-        return{ 
+        return {
           success: false,
-          message : "사용자 스킬 데이터가 없습니다." } 
+          message : "사용자 스킬 데이터가 없습니다."
+        }
       }
 
       return {

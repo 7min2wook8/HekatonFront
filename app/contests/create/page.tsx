@@ -60,12 +60,12 @@ const eligibilityOptions = [
 // 주소 문자열을 1차, 2차 지역으로 파싱하는 헬퍼 함수
 const parseAddress = (
   fullAddress: string
-): { region1: string; region2: string } => {
-  if (!fullAddress) return { region1: "", region2: "" };
+): { regionSi: string; regionGu: string } => {
+  if (!fullAddress) return { regionSi: "", regionGu: "" };
   const parts = fullAddress.split(" ");
-  const region1 = parts[0] || "";
-  const region2 = parts[1] || "";
-  return { region1, region2 };
+  const regionSi = parts[0] || "";
+  const regionGu = parts[1] || "";
+  return { regionSi, regionGu };
 };
 
 function ContestCreateContent() {
@@ -132,13 +132,18 @@ function ContestCreateContent() {
   // 모달에서 "확인" 버튼 클릭 시 실행될 함수
   const handleConfirmAddress = () => {
     setDisplayAddress(tempAddress); // 화면에 표시할 주소 업데이트
-    const { region1, region2 } = parseAddress(tempAddress);
-    setFormData({
+    const { regionSi, regionGu } = parseAddress(tempAddress);
+    const updatedFormData = {
       ...formData,
-      region1: region1, // 1차 지역 정보 업데이트
-      region2: region2, // 2차 지역 정보 업데이트
+      regionSi: regionSi, // 1차 지역 정보 업데이트
+      regionGu: regionGu, // 2차 지역 정보 업데이트
+    };
+    setFormData(updatedFormData);
+    console.log("[Debug] 지역 정보 업데이트됨:", {
+      regionSi: regionSi,
+      regionGu: regionGu,
+      updatedFormData: updatedFormData,
     });
-    console.log("지역 1차: ", region1, "지역 2차: ", region2);
     setIsMapModalOpen(false); // 모달 닫기
   };
 
@@ -187,8 +192,8 @@ function ContestCreateContent() {
     startDate: "",
     endDate: "",
     categoryIds: "",
-    region1: "", // 1차 지역 (도/특별시/광역시)
-    region2: "", // 2차 지역 (시/군/구)
+    regionSi: "", // 1차 지역 (도/특별시/광역시)
+    regionGu: "", // 2차 지역 (시/군/구)
     prizeDescription: "",
     maxParticipants: "",
     eligibility: [] as string[],

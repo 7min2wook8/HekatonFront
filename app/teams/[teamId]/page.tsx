@@ -1,8 +1,10 @@
+// C:\HekatonFront\app\teams\[teamId]\page.tsx
 "use client";
 
 import Footer from "@/components/footer";
 import Header from "@/components/header";
 import ProtectedRoute from "@/components/protected-route";
+import { InviteMemberModal } from "./modal/InviteMemberModal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/auth-context";
 import {
+  AlertCircle,
   ArrowLeft,
   Award,
   CheckCircle,
@@ -32,13 +35,13 @@ import {
   MessageSquare,
   Trash2,
   UserPlus,
+  Users,
   XCircle,
-  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner"; // toast 알림 추가
+import { toast } from "sonner";
 
 interface Team {
   id: string;
@@ -76,11 +79,8 @@ interface UserProfile {
 interface Contest {
   id: string;
   title: string;
-  // 백엔드 Contest DTO에 있을 수 있는 다른 필드들도 여기에 추가하세요 (예: description, startDate, endDate 등)
 }
 
-// 🚨🚨🚨 TeamEditContent에서 사용하던 contests 배열을 여기에 가져옵니다. 🚨🚨🚨
-// 실제 프로젝트에서는 이 목록을 별도의 공통 파일 (예: `src/lib/constants.ts`)로 분리하여 관리하는 것이 좋습니다.
 const contests = [
   { id: "1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d", title: "2025 스타트업 아이디어 공모전" },
   { id: "2a3b4c5d-6e7f-8a9b-0c1d-2e3f4a5b6c7d", title: "AI 혁신 아이디어 공모전" },
@@ -101,6 +101,8 @@ function TeamDetailPageContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
 
   const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8080";
 
@@ -133,7 +135,6 @@ function TeamDetailPageContent() {
       const rawTeamData: Team = await teamResponse.json();
       const enrichedTeamData: Team = { ...rawTeamData };
 
-      // 팀장 정보 가져오기 (기존 로직 유지)
       let fetchedLeaderProfile: UserProfile | null = null;
       if (rawTeamData.leaderId) {
         try {
@@ -164,10 +165,9 @@ function TeamDetailPageContent() {
       }
       setLeaderProfile(fetchedLeaderProfile);
 
-      // 🚨🚨🚨 공모전 정보 가져오기 로직 개선 🚨🚨🚨
       if (rawTeamData.contestId) {
-        let foundContestTitle = "[알 수 없는 공모전]"; // 기본 폴백 메시지
-        let fetchedFromApiSuccessfully = false; // API에서 성공적으로 가져왔는지 여부
+        let foundContestTitle = "[알 수 없는 공모전]";
+        let fetchedFromApiSuccessfully = false;
 
         try {
           const contestResponse = await fetch(`${API_GATEWAY_URL}/api/contests/${rawTeamData.contestId}`, {
@@ -179,24 +179,19 @@ function TeamDetailPageContent() {
             const fetchedContest: Contest = await contestResponse.json();
             if (fetchedContest.title) {
               foundContestTitle = fetchedContest.title;
-              fetchedFromApiSuccessfully = true; // API에서 성공적으로 제목을 가져옴
+              fetchedFromApiSuccessfully = true;
             } else {
               console.warn(`[TeamDetail] 공모전 API 응답에 'title' 필드가 없습니다. (ID: ${rawTeamData.contestId}, 응답: ${JSON.stringify(fetchedContest)})`);
-              // title 필드가 없어도, 일단 API는 성공했으니 로컬 폴백은 시도하지 않음.
-              // 대신 좀 더 구체적인 메시지 설정
               foundContestTitle = "[공모전 제목 없음 (API 응답 오류)]";
             }
           } else {
             const errorText = await contestResponse.text();
             console.warn(`[TeamDetail] 공모전 정보 불러오기 실패 (ID: ${rawTeamData.contestId}, Status: ${contestResponse.status}, 응답 본문: ${errorText})`);
-            // API 호출 실패 시, 폴백 로직으로 넘어감
           }
         } catch (contestErr: any) {
           console.error("[TeamDetail] 공모전 정보 불러오기 오류 (네트워크/파싱):", contestErr.message || contestErr);
-          // 네트워크 오류나 JSON 파싱 오류 시, 폴백 로직으로 넘어감
         }
 
-        // API에서 제목을 성공적으로 가져오지 못했을 경우 로컬 contests 배열에서 폴백 시도
         if (!fetchedFromApiSuccessfully) {
           const localContest = contests.find(c => c.id === rawTeamData.contestId);
           if (localContest) {
@@ -204,20 +199,16 @@ function TeamDetailPageContent() {
             console.info(`[TeamDetail] 공모전 정보 API 실패 후 로컬 목록에서 제목을 찾았습니다: ${localContest.title}`);
           } else {
             console.warn(`[TeamDetail] 로컬 공모전 목록에서도 ID ${rawTeamData.contestId}에 해당하는 공모전을 찾을 수 없습니다.`);
-            // 로컬에서도 찾지 못했을 때 최종 폴백 메시지
             foundContestTitle = "[알 수 없는 공모전 (정보 부족)]";
           }
         }
         enrichedTeamData.contestTitle = foundContestTitle;
 
       } else {
-        // contestId 자체가 없는 경우
         console.info("[TeamDetail] 팀 데이터에 contestId가 없습니다.");
         enrichedTeamData.contestTitle = "[참가 공모전 없음]";
       }
-      // 🚨🚨🚨 공모전 정보 불러오기 로직 개선 끝 🚨🚨🚨
 
-      // 필요한 기본값 설정 (백엔드에서 제공하지 않을 수 있는 필드)
       enrichedTeamData.currentMembers = enrichedTeamData.currentMembers ?? 0;
       enrichedTeamData.location = enrichedTeamData.location ?? "정보 없음";
       enrichedTeamData.requirements = enrichedTeamData.requirements ?? "";
@@ -227,7 +218,6 @@ function TeamDetailPageContent() {
       enrichedTeamData.neededRoles = enrichedTeamData.neededRoles ?? [];
       enrichedTeamData.skills = enrichedTeamData.skills ?? [];
 
-      // 모집 상태 업데이트 (옵션)
       if (enrichedTeamData.isRecruiting) {
         if (enrichedTeamData.currentMembers && enrichedTeamData.maxMembers && enrichedTeamData.currentMembers >= enrichedTeamData.maxMembers) {
           enrichedTeamData.status = "모집완료";
@@ -374,6 +364,10 @@ function TeamDetailPageContent() {
           </div>
           {isLeader && (
             <div className="flex gap-2">
+              <Button variant="default" onClick={() => setIsInviteModalOpen(true)}>
+                <Users className="w-4 h-4 mr-2" />
+                팀원 초대하기
+              </Button>
               <Link href={`/teams/${team.id}/edit`}>
                 <Button variant="outline">
                   <Edit className="w-4 h-4 mr-2" />
@@ -391,8 +385,7 @@ function TeamDetailPageContent() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>정말 팀을 삭제하시겠습니까?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      이 작업은 되돌릴 수 없습니다. 팀과 관련된 모든 데이터가 영구적으로 삭제됩니다. (현재는 모집 중지 및 비공개
-                      처리됩니다.)
+                      이 작업은 되돌릴 수 없습니다. 팀과 관련된 모든 데이터가 영구적으로 삭제됩니다. (현재는 모집 중지 및 비공개 처리됩니다.)
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -630,6 +623,15 @@ function TeamDetailPageContent() {
       </div>
 
       <Footer />
+      
+      {isLeader && team && (
+        <InviteMemberModal
+          teamId={team.id}
+          isOpen={isInviteModalOpen}
+          onClose={() => setIsInviteModalOpen(false)}
+          onSuccess={() => { /* 성공 시 필요한 추가 액션 */ }}
+        />
+      )}
     </div>
   );
 }

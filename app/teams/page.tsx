@@ -31,9 +31,10 @@ export default function TeamsPage() {
   const [isLoadingIndividuals, setIsLoadingIndividuals] = useState(true)
   const [errorIndividuals, setErrorIndividuals] = useState<string | null>(null)
 
-  // 사용자 프로필 관련 API 호출
-  const { getAllUserProfiles } = useAuth()
-     
+  // 사용자 프로필 관련 API 호출 및 현재 사용자 정보 가져오기
+  // ⭐️ useAuth 훅에서 로그인한 사용자 정보를 가져옵니다.
+  const { getAllUserProfiles, user } = useAuth()
+    
   const API_GATEWAY_URL = 'http://localhost:8080';
 
   // 팀 정보 가져오기
@@ -49,9 +50,6 @@ export default function TeamsPage() {
       if (selectedLocation !== "전체") {
         params.append('location', selectedLocation)
       }
-      // 백엔드에서 skill 파라미터가 정확히 무엇을 의미하는지 확인해야 합니다.
-      // 여기서는 'skill'이 쉼표로 구분된 문자열이거나 배열로 처리될 수 있다고 가정합니다.
-      // 실제 API에 맞게 조정해야 합니다.
       if (selectedSkill !== "전체") {
         params.append('skill', selectedSkill)
       }
@@ -72,7 +70,7 @@ export default function TeamsPage() {
         const data = await response.json()
         if (Array.isArray(data)) {
           setTeams(data)
-        } else if (data && Array.isArray(data.content)) { // 스프링 데이터 JPA Pageable 응답 형식 가정
+        } else if (data && Array.isArray(data.content)) {
           setTeams(data.content)
         } else {
           console.error("API 응답이 배열 또는 예상되는 객체 구조가 아닙니다:", data)
@@ -110,27 +108,23 @@ export default function TeamsPage() {
       }
 
       try {
-        // const skillsResponse = await getSkills()
-        // if (!skillsResponse.success) {
-        //   throw new Error(skillsResponse.message + "기술 스택을 불러오는 데 실패했습니다.")
-        // }
-
         const profileResponse = await getAllUserProfiles()
         
         if (!profileResponse.success) {
           throw new Error(profileResponse.message + "팀원 목록을 불러오는 데 실패했습니다.")
         }
 
-        
         const data = profileResponse.data
 
-        console.log("팀원 데이터:", data)
-        if (Array.isArray(data)) {
-          setIndividuals(data)
-        } else if (data && Array.isArray(data)) { // 스프링 데이터 JPA Pageable 응답 형식 가정
-          setIndividuals(data)
+        // ⭐️ 현재 로그인한 사용자(user.id)를 제외하고 목록을 필터링합니다.
+        const filteredIndividuals = data.filter((person: Profile) => person.userId !== user?.id)
+
+        console.log("팀원 데이터 (로그인 사용자 제외):", filteredIndividuals)
+        
+        if (Array.isArray(filteredIndividuals)) {
+          setIndividuals(filteredIndividuals)
         } else {
-          console.error("API 응답이 배열 또는 예상되는 객체 구조가 아닙니다:", data)
+          console.error("API 응답이 예상되는 배열 구조가 아닙니다:", filteredIndividuals)
           setIndividuals([])
         }
       } catch (error: any) {
@@ -143,10 +137,11 @@ export default function TeamsPage() {
       }
     }
 
-    if (activeTab === "individuals") {
+    // ⭐️ user 정보가 존재할 때만 API를 호출합니다.
+    if (activeTab === "individuals" && user) {
       fetchIndividuals()
     }
-  }, [searchTerm, selectedLocation, selectedSkill, activeTab])
+  }, [searchTerm, selectedLocation, selectedSkill, activeTab, user]) // ⭐️ user를 의존성 배열에 추가
 
   // 팀 모집 상태에 따른 배지 색상 반환 함수
   const getStatusColor = (status: string) => {
@@ -247,7 +242,6 @@ export default function TeamsPage() {
                   <SelectContent>
                     <SelectItem value="전체">전체 상태</SelectItem>
                     <SelectItem value="모집중">모집중</SelectItem>
-                    {/* <SelectItem value="마감임박">마감임박</SelectItem> */}
                     <SelectItem value="모집완료">모집완료</SelectItem>
                   </SelectContent>
                 </Select>
@@ -290,7 +284,7 @@ export default function TeamsPage() {
                             <div className="flex items-center">
                               <Trophy className="w-4 h-4 mr-1" />
                               <Link href={`/contests/${team.contestId}`} className="hover:underline">
-                                {team.contestName} {/* contestName으로 변경, 백엔드에서 제공 가정 */}
+                                {team.contestName}
                               </Link>
                             </div>
                           </div>
@@ -305,17 +299,14 @@ export default function TeamsPage() {
                             </div>
                             <div className="flex items-center">
                               <Star className="w-4 h-4 mr-1 text-yellow-500" />
-                              {team.rating || 'N/A'} {/* rating이 없을 경우 처리 */}
+                              {team.rating || 'N/A'}
                             </div>
                           </div>
                         </div>
                       </div>
                     </CardHeader>
-
                     <CardContent className="space-y-4">
                       <p className="text-gray-700 text-sm line-clamp-3">{team.description}</p>
-
-                      {/* 팀장 정보 (실제 API 응답에 leader 필드가 있는지 확인 필요) */}
                       {team.leader && (
                         <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                           <Avatar className="w-10 h-10">
@@ -328,8 +319,6 @@ export default function TeamsPage() {
                           </div>
                         </div>
                       )}
-
-                      {/* 필요한 역할 */}
                       <div>
                         <div className="text-sm font-medium text-gray-900 mb-2">모집 중인 역할</div>
                         <div className="flex flex-wrap gap-1">
@@ -340,8 +329,6 @@ export default function TeamsPage() {
                           ))}
                         </div>
                       </div>
-
-                      {/* 기술 스택 */}
                       <div>
                         <div className="text-sm font-medium text-gray-900 mb-2">기술 스택</div>
                         <div className="flex flex-wrap gap-1">
@@ -352,14 +339,11 @@ export default function TeamsPage() {
                           ))}
                         </div>
                       </div>
-
-                      {/* 액션 버튼 */}
                       <div className="flex gap-2 pt-2">
                         <Button className="flex-1" size="sm">
                           <MessageSquare className="w-4 h-4 mr-1" />
                           지원하기
                         </Button>
-                        {/* ⭐️ 여기를 수정했습니다. */}
                         <Link href={`/teams/${team.id}`} className="flex-1">
                           <Button variant="outline" size="sm" className="w-full">
                             <Eye className="w-4 h-4 mr-1" />
@@ -367,12 +351,10 @@ export default function TeamsPage() {
                           </Button>
                         </Link>
                       </div>
-
-                      {/* 추가 정보 */}
                       <div className="flex items-center justify-between text-xs text-gray-500 pt-2 border-t">
                         <div className="flex items-center">
                           <Calendar className="w-3 h-3 mr-1" />
-                          {new Date(team.createdAt).toLocaleDateString('ko-KR')} {/* 날짜 형식 변경 */}
+                          {new Date(team.createdAt).toLocaleDateString('ko-KR')}
                         </div>
                         <div>{team.applications || 0}명 지원</div>
                       </div>
@@ -381,8 +363,6 @@ export default function TeamsPage() {
                 ))}
               </div>
             )}
-
-            {/* 팀 빈 상태 */}
             {!isLoadingTeams && !errorTeams && teams.length === 0 && (
               <div className="text-center py-12">
                 <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -414,7 +394,7 @@ export default function TeamsPage() {
                         </Avatar>
                         <h3 className="font-semibold text-lg">{person.fullName}</h3>
                         <p className="text-gray-600 text-sm">{'N/A'}</p>
-                        <div className="flex items-center justify-center gap-4 mt-2 text-xs text-gray-500">                          
+                        <div className="flex items-center justify-center gap-4 mt-2 text-xs text-gray-500">                      
                           <div className="flex items-center">
                             <Clock className="w-3 h-3 mr-1" />
                             {person.experience}
@@ -425,11 +405,8 @@ export default function TeamsPage() {
                           </div>
                         </div>
                       </div>
-
                       <p className="text-gray-700 text-sm mb-4 line-clamp-3">{person.bio}</p>
-
-                      {/* 기술 스택 */}
-                      <div className="mb-4">
+                      <div>
                         <div className="text-sm font-medium text-gray-900 mb-2">기술 스택</div>
                         <div className="flex flex-wrap gap-1">
                           {person.skills && person.skills.map((skill: UserSkills) => (
@@ -439,29 +416,6 @@ export default function TeamsPage() {
                             ))}
                         </div>
                       </div>
-
-                      {/* 관심 분야
-                      <div className="mb-4">
-                        <div className="text-sm font-medium text-gray-900 mb-2">관심 분야</div>
-                        <div className="flex flex-wrap gap-1">
-                          {person.interests && person.interests.map((interest: string) => (
-                            <Badge key={interest} variant="outline" className="text-xs">
-                              {interest}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div> */}
-
-                      {/* 상태 및 프로젝트 수 */}
-                      {/* <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
-                        <div className="flex items-center">
-                          <div className={`w-2 h-2 rounded-full mr-2 ${person.isAvailable ? 'bg-green-500' : 'bg-red-500'}`} />
-                          {person.isAvailable ? '참여 가능' : '참여 불가'}
-                        </div>
-                        <div>{person.completedProjects || 0}개 프로젝트 완료</div>
-                      </div> */}
-
-                      {/* 액션 버튼 */}
                       <div className="flex gap-2">
                         <Button
                           className="flex-1"

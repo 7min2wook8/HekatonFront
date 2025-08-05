@@ -1,4 +1,3 @@
-// C:\HekatonFront\components\team\modals\InviteMemberModal.tsx
 "use client";
 
 import React, { useState, useCallback, useEffect } from "react";
@@ -10,7 +9,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -26,7 +24,17 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Check, Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
-import { useAuth, Profile } from "@/contexts/auth-context";
+import { useAuth, Profile as AuthProfile } from "@/contexts/auth-context";
+
+// Profile 타입이 auth-context에서 가져오는 Profile 타입과 다를 수 있으므로 별칭을 사용합니다.
+// 여기서는 `userId`와 `fullName`을 포함하는 타입으로 가정합니다.
+interface Profile {
+  userId: string;
+  fullName: string;
+  // 추가적으로 id, username 등의 속성이 있을 수 있습니다.
+  id?: string;
+  username?: string;
+}
 
 // useDebounce 훅이 별도 파일로 없기 때문에, 여기에 직접 정의하여 사용합니다.
 const useDebounce = <T,>(value: T, delay: number): T => {
@@ -53,7 +61,8 @@ interface InviteMemberModalProps {
 const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8080";
 
 export function InviteMemberModal({ teamId, isOpen, onClose, onSuccess }: InviteMemberModalProps) {
-  const { getAllUserProfiles } = useAuth();
+  // `useAuth`에서 가져오는 `user` 객체와 `getAllUserProfiles` 함수를 구조 분해 할당으로 가져옵니다.
+  const { user, getAllUserProfiles } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Profile[]>([]);
   const [selectedMembers, setSelectedMembers] = useState<Profile[]>([]);
@@ -62,16 +71,14 @@ export function InviteMemberModal({ teamId, isOpen, onClose, onSuccess }: Invite
   const [inviteMessage, setInviteMessage] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchInitialUsers();
-    } else {
-      setSearchQuery("");
-      setSearchResults([]);
-      setSelectedMembers([]);
-      setInviteMessage("");
-    }
-  }, [isOpen]);
+  // 현재 로그인한 사용자를 검색 결과에서 제외하는 함수
+  const filterOutCurrentUser = useCallback((users: Profile[]) => {
+    if (!user) return users;
+    // user 객체에 `id` 또는 `userId` 속성이 있다고 가정하고 필터링합니다.
+    const currentUserId = (user as any).id || (user as any).userId;
+    if (!currentUserId) return users;
+    return users.filter(member => (member.id || member.userId) !== currentUserId);
+  }, [user]);
 
   const fetchInitialUsers = async () => {
     setIsSearching(true);
@@ -81,7 +88,9 @@ export function InviteMemberModal({ teamId, isOpen, onClose, onSuccess }: Invite
       if (!response.success) {
         throw new Error(response.message || "사용자 목록을 불러오는 데 실패했습니다.");
       }
-      setSearchResults(response.data);
+      
+      const filteredUsers = filterOutCurrentUser(response.data);
+      setSearchResults(filteredUsers);
     } catch (err: any) {
       console.error("초기 사용자 목록 로딩 오류:", err);
       toast.error(`사용자 목록 로딩 실패: ${err.message || "알 수 없는 오류"}`);
@@ -106,8 +115,10 @@ export function InviteMemberModal({ teamId, isOpen, onClose, onSuccess }: Invite
 
       const allUsers: Profile[] = response.data;
       
-      const filteredUsers = allUsers.filter(user => 
-        user.fullName.toLowerCase().includes(query.toLowerCase())
+      const filteredUsers = filterOutCurrentUser(allUsers).filter(userProfile => 
+        // fullName 또는 username 속성으로 검색하도록 수정
+        (userProfile.fullName?.toLowerCase().includes(query.toLowerCase()) || 
+        userProfile.username?.toLowerCase().includes(query.toLowerCase()))
       );
       setSearchResults(filteredUsers);
     } catch (err: any) {
@@ -117,18 +128,38 @@ export function InviteMemberModal({ teamId, isOpen, onClose, onSuccess }: Invite
     } finally {
       setIsSearching(false);
     }
-  }, [getAllUserProfiles]);
+  }, [getAllUserProfiles, filterOutCurrentUser]);
 
   useEffect(() => {
-    if (debouncedSearchQuery.trim()) {
-      searchUsers(debouncedSearchQuery);
+    if (isOpen) {
+      // 모달이 열릴 때만 초기 사용자 목록을 가져옵니다.
+      fetchInitialUsers();
+    } else {
+      // 모달이 닫힐 때 상태를 초기화합니다.
+      setSearchQuery("");
+      setSearchResults([]);
+      setSelectedMembers([]);
+      setInviteMessage("");
     }
-  }, [debouncedSearchQuery, searchUsers]);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (debouncedSearchQuery) {
+      searchUsers(debouncedSearchQuery);
+    } else if (isOpen) {
+      // 검색어가 비어있을 때 초기 목록으로 돌아가도록 처리
+      fetchInitialUsers();
+    }
+  }, [debouncedSearchQuery, searchUsers, isOpen]);
 
   const toggleSelectMember = (member: Profile) => {
     setSelectedMembers(prevSelected => {
-      if (prevSelected.some(m => m.userId === member.userId)) {
-        return prevSelected.filter(m => m.userId !== member.userId);
+      // userId 또는 id를 사용하여 선택 여부 확인
+      const memberId = member.userId || member.id;
+      if (!memberId) return prevSelected;
+      
+      if (prevSelected.some(m => (m.userId || m.id) === memberId)) {
+        return prevSelected.filter(m => (m.userId || m.id) !== memberId);
       } else {
         return [...prevSelected, member];
       }
@@ -149,10 +180,13 @@ export function InviteMemberModal({ teamId, isOpen, onClose, onSuccess }: Invite
     setIsSendingInvite(true);
     let allInvitationsSuccess = true;
 
-    // 선택된 멤버들 각각에 대해 개별적으로 API 요청을 보냅니다.
     for (const member of selectedMembers) {
       try {
-        // 백엔드 API에 맞는 URL과 Request Body를 사용합니다.
+        const memberIdentifier = member.userId || member.id;
+        if (!memberIdentifier) {
+          throw new Error("초대할 사용자의 ID를 찾을 수 없습니다.");
+        }
+
         const response = await fetch(`${API_GATEWAY_URL}/api/invitations/teams/${teamId}/invite`, {
           method: "POST",
           headers: {
@@ -160,29 +194,26 @@ export function InviteMemberModal({ teamId, isOpen, onClose, onSuccess }: Invite
           },
           credentials: "include",
           body: JSON.stringify({
-            userId: member.userId,
+            userId: memberIdentifier,
             message: inviteMessage,
           }),
         });
 
-        // 💡 중요: 응답 상태를 먼저 확인합니다.
         if (!response.ok) {
           let errorBody = {};
-          let errorMessage = `[${member.fullName}] 초대 실패: ${response.status} ${response.statusText}`;
+          let memberName = member.fullName || member.username || "알 수 없는 사용자";
+          let errorMessage = `[${memberName}] 초대 실패: ${response.status} ${response.statusText}`;
 
           try {
-            // 서버가 JSON 응답을 보냈다면 파싱합니다.
             const contentType = response.headers.get("content-type");
             if (contentType && contentType.includes("application/json")) {
               errorBody = await response.json();
               errorMessage = (errorBody as any).message || errorMessage;
             } else {
-              // JSON이 아니면 텍스트로 읽고 메시지를 구성합니다.
               const text = await response.text();
-              errorMessage = `[${member.fullName}] 초대 실패: ${text || response.statusText}`;
+              errorMessage = `[${memberName}] 초대 실패: ${text || response.statusText}`;
             }
           } catch (jsonError) {
-            // JSON 파싱 자체가 실패했을 때의 처리
             console.error("Failed to parse error response as JSON", jsonError);
           }
 
@@ -192,8 +223,8 @@ export function InviteMemberModal({ teamId, isOpen, onClose, onSuccess }: Invite
       } catch (err: any) {
         allInvitationsSuccess = false;
         console.error("팀원 초대 오류:", err);
-        // 사용자에게 에러 메시지를 명확하게 표시합니다.
-        toast.error(err.message || `[${member.fullName}] 알 수 없는 오류로 초대 실패`);
+        const memberName = member.fullName || member.username || "알 수 없는 사용자";
+        toast.error(err.message || `[${memberName}] 알 수 없는 오류로 초대 실패`);
       }
     }
 
@@ -202,7 +233,7 @@ export function InviteMemberModal({ teamId, isOpen, onClose, onSuccess }: Invite
       onSuccess();
       onClose();
     } else {
-       toast.error("일부 팀원 초대에 실패했습니다. 콘솔을 확인해주세요.");
+        toast.error("일부 팀원 초대에 실패했습니다. 콘솔을 확인해주세요.");
     }
 
     setIsSendingInvite(false);
@@ -241,18 +272,18 @@ export function InviteMemberModal({ teamId, isOpen, onClose, onSuccess }: Invite
                       <ScrollArea className="h-[200px]">
                         {searchResults.map((user) => (
                           <CommandItem
-                            key={user.userId}
+                            key={user.userId || user.id}
                             onSelect={() => toggleSelectMember(user)}
                             className="cursor-pointer"
                           >
                             <div className="flex items-center space-x-2 w-full">
                               <Avatar className="h-6 w-6">
-                                <AvatarFallback>{user.fullName.charAt(0).toUpperCase()}</AvatarFallback>
+                                <AvatarFallback>{(user.fullName || user.username)?.charAt(0).toUpperCase()}</AvatarFallback>
                               </Avatar>
                               <div className="flex-1">
-                                <p className="font-medium">{user.fullName}</p>
+                                <p className="font-medium">{user.fullName || user.username}</p>
                               </div>
-                              {selectedMembers.some(m => m.userId === user.userId) && (
+                              {selectedMembers.some(m => (m.userId || m.id) === (user.userId || user.id)) && (
                                 <Check className="h-4 w-4 text-primary" />
                               )}
                             </div>
@@ -272,11 +303,11 @@ export function InviteMemberModal({ teamId, isOpen, onClose, onSuccess }: Invite
               {selectedMembers.length > 0 ? (
                 selectedMembers.map(member => (
                   <Badge
-                    key={member.userId}
+                    key={member.userId || member.id}
                     className="cursor-pointer"
                     onClick={() => toggleSelectMember(member)}
                   >
-                    {member.fullName}
+                    {member.fullName || member.username}
                   </Badge>
                 ))
               ) : (

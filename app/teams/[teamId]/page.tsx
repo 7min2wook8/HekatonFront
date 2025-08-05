@@ -1,10 +1,8 @@
-// C:\HekatonFront\app\teams\[teamId]\page.tsx
 "use client";
 
 import Footer from "@/components/footer";
 import Header from "@/components/header";
 import ProtectedRoute from "@/components/protected-route";
-import { InviteMemberModal } from "./modal/InviteMemberModal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,6 +40,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { InviteMemberModal } from "./modal/InviteMemberModal";
 
 interface Team {
   id: string;
@@ -81,6 +80,14 @@ interface Contest {
   title: string;
 }
 
+interface TeamMember {
+  userId: string;
+  fullName: string;
+  // 💡 is_active 필드 추가
+  is_active: boolean;
+  // 다른 필요한 속성들
+}
+
 const contests = [
   { id: "1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d", title: "2025 스타트업 아이디어 공모전" },
   { id: "2a3b4c5d-6e7f-8a9b-0c1d-2e3f4a5b6c7d", title: "AI 혁신 아이디어 공모전" },
@@ -98,10 +105,10 @@ function TeamDetailPageContent() {
 
   const [team, setTeam] = useState<Team | null>(null);
   const [leaderProfile, setLeaderProfile] = useState<UserProfile | null>(null);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
 
   const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8080";
@@ -116,11 +123,10 @@ function TeamDetailPageContent() {
     setIsLoading(true);
     setError(null);
     try {
+      // 1. 팀 기본 정보 가져오기
       const teamResponse = await fetch(`${API_GATEWAY_URL}/api/teams/${teamId}`, {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
       });
 
@@ -135,6 +141,28 @@ function TeamDetailPageContent() {
       const rawTeamData: Team = await teamResponse.json();
       const enrichedTeamData: Team = { ...rawTeamData };
 
+      // 2. 팀원 목록 가져오기
+      const membersResponse = await fetch(`${API_GATEWAY_URL}/api/teams/${teamId}/members`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+
+      let activeMembersList: TeamMember[] = [];
+      if (membersResponse.ok) {
+        const allMembers: TeamMember[] = await membersResponse.json();
+        activeMembersList = allMembers.filter(member => member.is_active);
+        setTeamMembers(activeMembersList);
+        // 💡 수정: 리더를 포함하여 현재 멤버 수 계산
+        enrichedTeamData.currentMembers = activeMembersList.length;
+      } else {
+        console.warn(`팀원 목록을 불러오는 데 실패했습니다 (Status: ${membersResponse.status}).`);
+        setTeamMembers([]);
+        // 💡 수정: 리더만 있을 경우를 고려하여 1로 설정
+        enrichedTeamData.currentMembers = 1;
+      }
+
+      // 3. 팀장 정보 가져오기 (기존 로직 유지)
       let fetchedLeaderProfile: UserProfile | null = null;
       if (rawTeamData.leaderId) {
         try {
@@ -165,6 +193,7 @@ function TeamDetailPageContent() {
       }
       setLeaderProfile(fetchedLeaderProfile);
 
+      // 4. 공모전 정보 가져오기 (기존 로직 유지)
       if (rawTeamData.contestId) {
         let foundContestTitle = "[알 수 없는 공모전]";
         let fetchedFromApiSuccessfully = false;
@@ -208,16 +237,8 @@ function TeamDetailPageContent() {
         console.info("[TeamDetail] 팀 데이터에 contestId가 없습니다.");
         enrichedTeamData.contestTitle = "[참가 공모전 없음]";
       }
-
-      enrichedTeamData.currentMembers = enrichedTeamData.currentMembers ?? 0;
-      enrichedTeamData.location = enrichedTeamData.location ?? "정보 없음";
-      enrichedTeamData.requirements = enrichedTeamData.requirements ?? "";
-      enrichedTeamData.contactMethod = enrichedTeamData.contactMethod ?? "platform";
-      enrichedTeamData.contactInfo = enrichedTeamData.contactInfo ?? "";
-      enrichedTeamData.allowDirectApply = enrichedTeamData.allowDirectApply ?? true;
-      enrichedTeamData.neededRoles = enrichedTeamData.neededRoles ?? [];
-      enrichedTeamData.skills = enrichedTeamData.skills ?? [];
-
+      
+      // 5. 모집 현황 상태 업데이트 (currentMembers를 기반으로 수정)
       if (enrichedTeamData.isRecruiting) {
         if (enrichedTeamData.currentMembers && enrichedTeamData.maxMembers && enrichedTeamData.currentMembers >= enrichedTeamData.maxMembers) {
           enrichedTeamData.status = "모집완료";
@@ -230,7 +251,17 @@ function TeamDetailPageContent() {
         enrichedTeamData.status = "모집완료";
       }
 
-      setTeam(enrichedTeamData);
+      // 6. 상태 업데이트
+      setTeam({
+        ...enrichedTeamData,
+        location: enrichedTeamData.location ?? "정보 없음",
+        requirements: enrichedTeamData.requirements ?? "",
+        contactMethod: enrichedTeamData.contactMethod ?? "platform",
+        contactInfo: enrichedTeamData.contactInfo ?? "",
+        allowDirectApply: enrichedTeamData.allowDirectApply ?? true,
+        neededRoles: enrichedTeamData.neededRoles ?? [],
+        skills: enrichedTeamData.skills ?? [],
+      });
     } catch (err: any) {
       console.error("팀 정보 불러오기 오류:", err);
       setError(err.message || "알 수 없는 오류가 발생했습니다.");
@@ -250,9 +281,7 @@ function TeamDetailPageContent() {
     try {
       const response = await fetch(`${API_GATEWAY_URL}/api/teams/${teamId}`, {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
       });
 
@@ -306,6 +335,8 @@ function TeamDetailPageContent() {
   };
 
   const isLeader = user?.id === team?.leaderId;
+  // 💡 수정: 리더를 포함한 총 멤버 수 계산
+  const totalMembers = teamMembers.length + 1;
 
   if (isLoading) {
     return (
@@ -436,7 +467,8 @@ function TeamDetailPageContent() {
                 <div>
                   <p className="text-sm font-medium text-gray-500">모집 현황</p>
                   <div className="text-lg font-semibold mt-1">
-                    {`${team.currentMembers || 0} / ${team.maxMembers} 명`}
+                    {/* 💡 수정: totalMembers 변수를 사용하여 리더를 포함한 총 인원 수 표시 */}
+                    {`${totalMembers} / ${team.maxMembers} 명`}
                     <Badge variant={getStatusBadgeVariant(team.status, team.isRecruiting)} className="ml-2">
                       {team.status || (team.isRecruiting ? "모집중" : "모집완료")}
                     </Badge>
@@ -517,7 +549,7 @@ function TeamDetailPageContent() {
                       ? "이메일"
                       : team.contactMethod === "kakao"
                       ? "카카오톡"
-                      : team.contactMethod === "discord"
+                      : team.contactMethod === "discord" // 수정된 부분
                       ? "디스코드"
                       : "[연락 방법 정보 없음]"}
                   </p>

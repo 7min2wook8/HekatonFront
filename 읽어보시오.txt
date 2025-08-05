@@ -40,6 +40,9 @@ docker-compose up -d --build
 let webApp (serviceProvider: IServiceProvider) : HttpHandler
 아래에 새로운 기능 추가할시 내용 추가해야함(모르면 물어볼것!!)
 
+추가: controller에 로그인 안하고 볼 데이터는 매개변수에 @RequestHeader("X-USER-ID") String userId 뺄것
+	반대로 로그인 해야만 볼 수 있는 데이터는 매개변수에 @RequestHeader("X-USER-ID") String userId 추가하고 Auth.requireAuth >=> choose 에 경로 추가해야함
+
 
 <카카오맵 API 활성화 방법>
 Case 1 : 초대 받은 경우

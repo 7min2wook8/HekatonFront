@@ -1,8 +1,10 @@
 "use client"
 //0804 -참여 중인 팀 목록, 신청한 팀 목록 구현하기
+//0805 - 프로필 호출 시 스킬 정보도 같이 가져오는 기능 구현하기
 import { createContext, SetStateAction, useContext, useEffect, useState, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import { UUID } from "crypto"
+import { User } from "lucide-react"
 
 
 interface User {
@@ -54,23 +56,22 @@ interface TeamDatas{
   id: UUID
   name: string
   description: string
-  reader_id: UUID
-  contest_id: UUID
-  is_recruiting: boolean
-  is_public: boolean
-  max_members: number
-  created_at: Date
-  updated_at: Date
-  allow_direct_apply: boolean
-  category_ids_json: string[]
-  contact_info: string
-  contact_method: string
-  created_by_user_id: UUID
+  leaderId: UUID
+  contestId: UUID
+  isRecruiting: boolean
+  isPublic: boolean
+  maxMembers: number
+  createdByUserId : UUID
+  createdAt: Date
+  updatedAt: Date
+  neededRoles : string[]
+  skills: string[]
+  categoryIds: string[]
   location: string
-  needed_roles_json: string[]
-  requirements: string[]
-  skills_json: string[]
-
+  requirements: string
+  contactMethod: string
+  contactInfo: string
+  allowDirectApply: boolean
 }
 
 interface TeamContextType{
@@ -134,7 +135,6 @@ const TeamContext = createContext<TeamContextType | undefined>(undefined)
 
 const AUTH_SERVER_URL = 'http://localhost:60000'; // auth-server 직접 호출
 const API_GATEWAY_URL = 'http://localhost:8080'; // api-gateway 호출
-const Team_GATEWAY_URL = 'http://localhost:8086'; // api-gateway 호출
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)    
@@ -145,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setIsLoading(true)
     const checkSession = async () => {
-        console.log("세션 확인 중...")
+        //console.log("세션 확인 중...")
       try {
         
         const res = await fetch(`${AUTH_SERVER_URL}/auth/refresh`, {
@@ -156,7 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (res.ok) {
 
           const data = await res.json();
-          console.log("세션 확인 성공:", data);
+          //console.log("세션 확인 성공:", data);
 
           // 자동 로그인 후 사용자 정보 가져오기
           const meRes = await fetch(`${API_GATEWAY_URL}/api/users/me`, {
@@ -808,7 +808,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
     },
     getMyTeams: function (): Promise<{ success: boolean; message: string; data: TeamDatas[] }> {
        try {
-        const response = fetch(`${Team_GATEWAY_URL}/api/teams`, {
+        const response = fetch(`${API_GATEWAY_URL}/api/teams`, {
           method: 'GET',
           credentials: 'include' // JWT 쿠키 포함
         });
@@ -818,29 +818,31 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
             return { success: false, message: msg || "팀 목록을 불러오지 못했습니다.", data: [] }
           }
           const data = await res.json()          
+          //console.log(data)
+          const teams: TeamDatas[] = data.content.map((team: TeamDatas) => ({
 
-          const teams: TeamDatas[] = data.content.map((team: any) => ({
             id: team.id,
             name: team.name,
             description: team.description,
-            reader_id: team.reader_id,
-            contest_id: team.contest_id,
-            is_recruiting: team.is_recruiting,
-            is_public: team.is_public,
-            max_members: team.max_members,
-            created_at: new Date(team.created_at),
-            updated_at: new Date(team.updated_at),
-            allow_direct_apply: team.allow_direct_apply,
-            category_ids_json: team.category_ids_json || [],
-            contact_info: team.contact_info || "",
-            contact_method: team.contact_method || "",
-            created_by_user_id: team.created_by_user_id,
+            leaderId: team.leaderId,
+            contestId: team.contestId,
+            isRecruiting: team.isRecruiting,
+            isPublic: team.isPublic,
+            maxMembers: team.maxMembers,
+            createdAt: new Date(team.createdAt),
+            updatedAt: new Date(team.updatedAt),
+            allowDirectApply: team.allowDirectApply,
+            categoryIds: team.categoryIds || [],
+            contactInfo: team.contactInfo || "",
+            contactMethod: team.contactMethod || "",
+            createdByUserId: team.createdByUserId,
             location: team.location || "",
-            needed_roles_json: team.needed_roles_json || [],
+            neededRoles: team.neededRoles || [],
             requirements: team.requirements || [],
-            skills_json: team.skills_json || []
+            skills: team.skills || []
           }))
 
+          //console.log(teams)
 
           return { success: true, message: "팀 목록을 성공적으로 불러왔습니다.", data: teams }
         })
@@ -853,8 +855,32 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
         })
       }
     },
+    //내가 신청한 팀 목록 조회 구현
     getAppliedTeams: function (): Promise<{ success: boolean; message: string; data: TeamDatas[] }> {
-      throw new Error("Function not implemented.")
+       try {
+        const response = fetch(`${API_GATEWAY_URL}/api/teams/users/me/applications`, {
+          method: 'GET',
+          credentials: 'include'       
+        });
+
+        
+        return response.then(async (res) => {
+          if (!res.ok) {
+            const msg = await res.text()
+            return { success: false, message: msg + " 팀 목록을 불러오지 못했습니다.", data: [] }
+          }
+          const data = await res.json()         
+
+          return { success: true, message: "팀 목록을 성공적으로 불러왔습니다.", data: [] }
+        })
+      } catch (error) {
+        console.error("팀 목록 불러오기 오류:", error)
+        return Promise.resolve({
+          success: false,
+          message: "팀 목록을 불러오는 중 오류가 발생했습니다.",
+          data: []
+        })
+      }
     },
     getTeamMembers: function (teamId: UUID): Promise<{ success: boolean; message: string; data: User[] }> {
       throw new Error("Function not implemented.")

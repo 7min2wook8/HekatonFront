@@ -237,7 +237,7 @@ function ContestCreateContent() {
     console.log("제출 전 데이터:", submissionData);
 
     try {
-      const response = await fetch(`${API_GATEWAY_URL}/api/contests`, {
+      const response = await fetch(`${API_GATEWAY_URL}/api/contests/create`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

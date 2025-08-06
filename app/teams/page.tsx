@@ -340,12 +340,9 @@ export default function TeamsPage() {
                         </div>
                       </div>
                       <div className="flex gap-2 pt-2">
-                        <Button className="flex-1" size="sm">
-                          <MessageSquare className="w-4 h-4 mr-1" />
-                          지원하기
-                        </Button>
+                        {/* '지원하기' 버튼을 제거하고, '상세보기' 버튼만 남깁니다. */}
                         <Link href={`/teams/${team.id}`} className="flex-1">
-                          <Button variant="outline" size="sm" className="w-full">
+                          <Button size="sm" className="w-full">
                             <Eye className="w-4 h-4 mr-1" />
                             상세보기
                           </Button>
@@ -410,10 +407,10 @@ export default function TeamsPage() {
                         <div className="text-sm font-medium text-gray-900 mb-2">기술 스택</div>
                         <div className="flex flex-wrap gap-1">
                           {person.skills && person.skills.map((skill: UserSkills) => (
-                              <Badge key={skill.skillId} variant="secondary" className="text-xs">
-                                {skill.skillName}
-                              </Badge>
-                            ))}
+                               <Badge key={skill.skillId} variant="secondary" className="text-xs">
+                                 {skill.skillName}
+                               </Badge>
+                             ))}
                         </div>
                       </div>
                       <div className="flex gap-2">

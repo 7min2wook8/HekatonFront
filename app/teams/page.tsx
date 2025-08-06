@@ -58,9 +58,9 @@ export default function TeamsPage() {
       }
 
       try {
-        const response = await fetch(`${API_GATEWAY_URL}/api/teams?${params.toString()}`, {
-          method: 'GET',
-          credentials: 'include',
+        const response = await fetch(`${API_GATEWAY_URL}/api/teams/list?${params.toString()}`, {
+            method: 'GET',
+            credentials: 'include',
         })
 
         if (!response.ok) {

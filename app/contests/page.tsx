@@ -91,11 +91,12 @@ export default function ContestsPage() {
       params.append('sortBy', sortBy);
       params.append('sortDir', sortDir);
 
-      // ✅ 수정된 부분: isActive 파라미터를 추가하여 활성화된 공모전만 조회
+      // isActive 파라미터를 추가하여 활성화된 공모전만 조회
       params.append('isActive', 'true');
 
       try {
-        let url = `${API_GATEWAY_URL}/api/contests`; // /status 엔드포인트는 상태 필터링에 사용되므로, 일반 조회는 /contests로 수정합니다.
+        // 🚨 수정된 부분: 공모전 목록 조회 URL을 백엔드와 일치시킵니다.
+        let url = `${API_GATEWAY_URL}/api/contests/list`; 
 
         // 카테고리 선택 시 URL 변경
         if (selectedCategory !== "전체") {
@@ -105,9 +106,10 @@ export default function ContestsPage() {
           }
         }
         
-        // 검색어, 상태, 지역 파라미터가 있으면 URL을 contests로 변경
+        // 검색어, 상태, 지역 파라미터가 있으면 URL을 contests/list로 변경
+        // 🚨 수정된 부분: 검색/필터링 시에도 /list 경로를 사용하도록 변경
         if (searchTerm || selectedStatus !== "전체" || selectedLocations.length > 0) {
-            url = `${API_GATEWAY_URL}/api/contests`;
+            url = `${API_GATEWAY_URL}/api/contests/list`;
         }
 
         const response = await fetch(`${url}?${params.toString()}`, {

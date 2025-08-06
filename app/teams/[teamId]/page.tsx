@@ -125,7 +125,7 @@ function TeamDetailPageContent() {
     setError(null);
     try {
       // 1. 팀 기본 정보 가져오기
-      const teamResponse = await fetch(`${API_GATEWAY_URL}/api/teams/${teamId}`, {
+      const teamResponse = await fetch(`${API_GATEWAY_URL}/api/teams/${teamId}/detail`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

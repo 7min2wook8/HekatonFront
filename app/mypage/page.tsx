@@ -24,8 +24,9 @@ import {
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import ProtectedRoute from "@/components/protected-route";
-import { useAuth, useTeam } from "@/contexts/auth-context";
+import { useAuth, useTeam, Profile } from "@/contexts/auth-context";
 import { toast } from "sonner";
+import { profile } from "console";
 
 const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8080";
 
@@ -50,8 +51,8 @@ interface Invitation {
 function MyPageContent() {
   const [activeTab, setActiveTab] = useState("overview");
 
-  const { user } = useAuth();
-  const { Teams, getMyTeams } = useTeam();
+  const { user, viewProfile } = useAuth();
+  const { Teams, getMyTeams, getAppliedTeams } = useTeam();
   const [favoriteContests, setFavoriteContests] = useState<FavoriteContest[]>(
     []
   );
@@ -64,6 +65,8 @@ function MyPageContent() {
 
   const [participatingTeams, setParticipatingTeams] = useState<typeof Teams>([]);
   const [appliedTeams, setAppliedTeams] = useState<typeof Teams>([]);
+
+  const [myProfileData, setProfileData] = useState<Profile>();
 
   const fetchInvitations = useCallback(async () => {
     if (!user?.id) return;
@@ -96,8 +99,24 @@ function MyPageContent() {
   }, [user]);
 
   useEffect(() => {
+    //즐겨찾기 불러오기
     fetchInvitations();
   }, [fetchInvitations]);
+
+const getProfileData = async () => {
+    //프로필 데이터 일부 불러오기
+      const profie = await viewProfile();
+      if(profie.success)
+      {
+        console.log(profie)
+        setProfileData(profie.profile)
+      }
+    }
+
+    useEffect(() => {
+    //프로필 데이터 일부 불러오기
+      getProfileData()
+    }, []);
 
   useEffect(() => {
     const fetchFavoriteContests = async () => {
@@ -154,10 +173,31 @@ function MyPageContent() {
         console.error("참여 중인 팀 목록 불러오기 오류:", error);
         setParticipatingTeams([]);
       }
+
+      try {
+        console.log("신청한 팀 목록 조회 검색")
+        const teams = await getAppliedTeams();
+
+        if (!teams) {
+          console.error("신청한 팀 목록을 불러오는 데 실패했습니다.");
+          setParticipatingTeams([]);
+          return;
+        }        
+
+        // 참여 중인 팀 목록 필터링
+        const userParticipatingTeams = Array.isArray(teams.data) ? teams.data : [];
+
+        // 상태 업데이트
+        setAppliedTeams(userParticipatingTeams);
+
+      } catch (error) {
+        console.error("참여 중인 팀 목록 불러오기 오류:", error);
+        setParticipatingTeams([]);
+      }
     };
 
     fetchParticipatingTeams();
-  }, [user, getMyTeams]);
+  }, [user, getMyTeams, getAppliedTeams]);
 
   const handleInvitationResponse = async (invitationId: string, action: "accept" | "reject") => {
     if (!user?.id) {
@@ -246,7 +286,7 @@ function MyPageContent() {
                       {/*user.location ||*/ "위치 미설정"}
                       <span className="mx-2">•</span>
                       <Calendar className="w-4 h-4 mr-1" />
-                      가입일: 2024-01-15
+                        가입일: 2024-01-15
                     </div>
                   </div>
 
@@ -267,38 +307,39 @@ function MyPageContent() {
                 </div>
 
                 <p className="text-gray-700 mb-4">
-                  열정적인 개발자이자 창업가입니다. 혁신적인 아이디어로 세상을
-                  바꾸고 싶습니다.
+                  {myProfileData?.bio || "열정적인 개발자이자 창업가입니다. 혁신적인 아이디어로 세상을 바꾸고 싶습니다."}                  
                 </p>
 
                 <div className="flex flex-wrap gap-4">
-                  <div>
+                  {/* <div>
                     <span className="text-sm font-medium text-gray-500">
                       관심 분야
                     </span>
                     <div className="flex flex-wrap gap-1 mt-1">
                       {
-                        /*user.interests?.map((interest) => (
+                        myProfileData.interests?.map((interest) => (
                         <Badge key={interest} variant="secondary">
                           {interest}
                         </Badge>
-                      )) ||*/ <span className="text-sm text-gray-400">
+                      )) || <span className="text-sm text-gray-400">
                           관심 분야 미설정
                         </span>
                       }
                     </div>
-                  </div>
+                  </div> */}
                   <div>
                     <span className="text-sm font-medium text-gray-500">
                       기술 스택
                     </span>
                     <div className="flex flex-wrap gap-1 mt-1">
                       {
-                        /*user.skills?.map((skill) => (
-                        <Badge key={skill} variant="outline">
-                          {skill}
+                        myProfileData?.skills?.map((skill) => (
+
+                        <Badge key={skill.skillId} variant="outline">
+                          {skill.skillName}
                         </Badge>
-                      )) || */ <span className="text-sm text-gray-400">
+
+                        )) || <span className="text-sm text-gray-400">
                           기술 스택 미설정
                         </span>
                       }
@@ -424,18 +465,18 @@ function MyPageContent() {
                   <div className="relative">
                     <img
                       src={/*team.logoURL ||*/ "/placeholder.svg"}
-                      alt={team.allow_direct_apply ? team.name : "팀 로고"}
+                      alt={team.allowDirectApply ? team.name : "팀 로고"}
                       className="w-full h-48 object-cover rounded-t-lg"
                     />
                     <Badge className="absolute top-2 left-2">
-                      {team.category_ids_json}
+                      {team.categoryIds}
                     </Badge>
                     <Badge
                       className={`absolute top-2 right-2 ${getStatusColor(
-                        team.allow_direct_apply ? "진행중" : "대기중"
+                        team.allowDirectApply ? "진행중" : "대기중"
                       )}`}
                     >
-                      {team.allow_direct_apply ? "진행중" : "대기중"}
+                      {team.allowDirectApply ? "진행중" : "대기중"}
                     </Badge>
                   </div>
                   <CardHeader>
@@ -450,7 +491,7 @@ function MyPageContent() {
                         </div>
                         <div className="flex items-center">
                           <Users className="w-4 h-4 mr-1" />
-                          팀원 {team.max_members}명
+                          팀원 {team.maxMembers}명
                         </div>
                       </div>
 
@@ -502,14 +543,14 @@ function MyPageContent() {
                       className="w-full h-48 object-cover rounded-t-lg"
                     />
                     <Badge className="absolute top-2 left-2">
-                      {team.category_ids_json}
+                      {team.categoryIds}
                     </Badge>
                     <Badge
                       className={`absolute top-2 right-2 ${getStatusColor(
-                        team.allow_direct_apply ? "진행중" : "대기중"
+                        team.allowDirectApply ? "진행중" : "대기중"
                       )}`}
                     >
-                      {team.allow_direct_apply ? "진행중" : "대기중"}
+                      {team.allowDirectApply ? "진행중" : "대기중"}
                     </Badge>
                   </div>
                   <CardHeader>
@@ -520,7 +561,7 @@ function MyPageContent() {
                       <div className="text-sm text-gray-600">
                         <div className="flex items-center">
                           <Calendar className="w-4 h-4 mr-1" />
-                          신청일: {team.updated_at.toString()}
+                          신청일: {team.updatedAt.toString()}
                         </div>
                       </div>
 

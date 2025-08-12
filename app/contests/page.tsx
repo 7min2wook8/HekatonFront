@@ -23,7 +23,7 @@ export default function ContestsPage() {
   const [sortDir, setSortDir] = useState("asc")
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("전체")
-  const [selectedLocations, setSelectedLocations] = useState<string[]>([])
+  const [selectedLocations, setSelectedLocations] = useState<string[]>(["서울특별시 강남구","서울특별시 관악구"])
   const [selectedStatus, setSelectedStatus] = useState("전체")
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

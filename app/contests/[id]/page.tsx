@@ -63,27 +63,41 @@ export default function ContestDetailPage() {
         setError(null);
 
         try {
-            let url;
-            const fetchOptions: RequestInit = {};
+            // 기본 공모전 정보 (인증 여부에 따라 다른 엔드포인트 사용)
+            const contestUrl = isAuthenticated 
+                ? `${API_GATEWAY_URL}/api/contests/${params.id}/authenticated`
+                : `${API_GATEWAY_URL}/api/contests/${params.id}/unauthenticated`;
+            
+            const contestPromise = fetch(contestUrl, { 
+                credentials: isAuthenticated ? "include" : "omit"
+            }).then((res) => {
+                if (!res.ok) throw new Error("공모전 정보를 가져오지 못했습니다.");
+                return res.json();
+            });
 
-            if (isAuthenticated) {
-                // 로그인 상태일 때: 기존 경로 사용
-                url = `${API_GATEWAY_URL}/api/contests/${params.id}/authenticated`;               
-                fetchOptions.credentials = "include";
-            } else {
-                // 로그아웃 상태일 때: unauthenticated 경로 사용
-                url = `${API_GATEWAY_URL}/api/contests/${params.id}/unauthenticated`;
-                fetchOptions.credentials = "omit";               
-            }
-            console.log(url)
-            const response = await fetch(url, fetchOptions);
+            // 즐겨찾기 상태 (로그인 상태일 때만)
+            const isFavoritePromise = isAuthenticated
+                ? fetch(
+                    `${API_GATEWAY_URL}/api/contests/favorite/${params.id}/isfavorites`,
+                    { credentials: "include" }
+                  ).then((res) => (res.ok ? res.json() : false))
+                : Promise.resolve(false);
 
-            if (!response.ok) {
-                throw new Error("공모전 정보를 가져오지 못했습니다.");
-            }
+            // 즐겨찾기 수
+            const favoritesCountPromise = fetch(
+                `${API_GATEWAY_URL}/api/contests/favorite/${params.id}/favoritesCount`,
+                { credentials: "include" }
+            ).then((res) => (res.ok ? res.json() : 0));
 
-            const data = await response.json();
-            setContest(data);
+            const [contestData, isLiked, likeCount] = await Promise.all([
+                contestPromise,
+                isFavoritePromise,
+                favoritesCountPromise,
+            ]);
+
+            console.log("Fetch 결과:", { contestData, isLiked, likeCount });
+
+            setContest({ ...contestData, isLiked, likeCount });
         } catch (error: any) {
             console.error("공모전 데이터를 가져오는 중 오류 발생:", error);
             setError(error.message);
@@ -94,7 +108,7 @@ export default function ContestDetailPage() {
 
     useEffect(() => {
         fetchContestDetails();
-    }, [params.id, isAuthenticated, user]);
+    }, [params.id, isAuthenticated]);
 
     const handleLike = async () => {
         if (!isAuthenticated) {
@@ -104,7 +118,9 @@ export default function ContestDetailPage() {
         }
         if (!contest) return;
 
+        // Optimistic UI 업데이트 (선처리)
         const newIsLiked = !contest.isLiked;
+        const previousState = { ...contest };
         setContest((prev: any) => ({
             ...prev,
             isLiked: newIsLiked,
@@ -138,15 +154,13 @@ export default function ContestDetailPage() {
             toast.success(
                 newIsLiked ? "즐겨찾기에 추가했습니다." : "즐겨찾기에서 삭제했습니다."
             );
-            fetchContestDetails();
+            // API 호출 성공 후 최신 데이터를 다시 불러와서 UI와 동기화
+            fetchContestDetails(); 
         } catch (error) {
             console.error("즐겨찾기 업데이트 실패:", error);
             toast.error("즐겨찾기 업데이트에 실패했습니다.");
-            setContest((prev: any) => ({
-                ...prev,
-                isLiked: !newIsLiked,
-                likeCount: newIsLiked ? prev.likeCount - 1 : prev.likeCount + 1,
-            }));
+            // 오류 발생 시 이전 상태로 롤백
+            setContest(previousState);
         }
     };
 

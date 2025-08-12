@@ -1,7 +1,10 @@
 "use client"
-
+//0804 -참여 중인 팀 목록, 신청한 팀 목록 구현하기
+//0805 - 프로필 호출 시 스킬 정보도 같이 가져오는 기능 구현하기
 import { createContext, SetStateAction, useContext, useEffect, useState, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
+import { UUID } from "crypto"
+import { User } from "lucide-react"
 
 
 interface User {
@@ -11,21 +14,25 @@ interface User {
   phoneNumber: string 
 }
 
-export interface Profile {    
+export interface Profile {   
+    userId: string 
     fullName : string
     bio : string
     profileImageUrl : string
     education : string
     experience : string
     portfolioUrl : string
+    isPublic?: boolean // 프로필 공개 여부
+    skills?: UserSkills[] // 사용자의 스킬 정보
 }
 
 export interface UserSkills{
-  id: string
   userId: string
   skillId: number
-  proficiency: number
-  created_at: string
+  skillName: string
+  category: string
+  description: string
+  
 }
 
 export interface Skills{  
@@ -45,6 +52,60 @@ export interface NcsCategory{
   
 }
 
+interface TeamDatas{
+  id: UUID
+  name: string
+  description: string
+  leaderId: UUID
+  contestId: UUID
+  isRecruiting: boolean
+  isPublic: boolean
+  maxMembers: number
+  createdByUserId : UUID
+  createdAt: Date
+  updatedAt: Date
+  neededRoles : string[]
+  skills: string[]
+  categoryIds: string[]
+  location: string
+  requirements: string
+  contactMethod: string
+  contactInfo: string
+  allowDirectApply: boolean
+}
+
+interface TeamContextType{
+  Teams: TeamDatas[] // 팀 목록
+  isLoading: boolean
+  setIsLoading: (isLoading: boolean) => void
+  //팀 정보 조회
+  getTeam: (teamId: UUID) => Promise<{ success: boolean; message: string; team: TeamDatas | null }>
+  //팀 생성
+  createTeam: (teamData: TeamDatas) => Promise<{ success: boolean; message: string; team: TeamDatas | null }>
+  //팀 수정
+  updateTeam: (teamId: UUID, teamData: Partial<TeamDatas>) => Promise<{ success: boolean; message: string; team: TeamDatas | null }>
+  //팀 삭제
+  deleteTeam: (teamId: UUID) => Promise<{ success: boolean; message: string }>
+  //팀 참여 신청
+  applyToTeam: (teamId: UUID) => Promise<{ success: boolean; message: string }>
+  //팀 참여 승인
+  approveTeamApplication: (teamId: UUID, userId: UUID) => Promise<{ success: boolean; message: string }>
+  //팀 참여 거절
+  rejectTeamApplication: (teamId: UUID, userId: UUID) => Promise<{ success: boolean; message: string }>
+  //팀 탈퇴
+  leaveTeam: (teamId: UUID) => Promise<{ success: boolean; message: string }>
+  //팀장 변경
+  changeTeamLeader: (teamId: UUID, newLeaderId: UUID) => Promise<{ success: boolean; message: string }>
+  //팀 목록 조회
+  getAllTeams: () => Promise<{ success: boolean; message: string; data: TeamDatas[] }>
+  //사용자가 속한 팀 목록 조회
+  getMyTeams: () => Promise<{ success: boolean; message: string; data: TeamDatas[] }>
+  //사용자가 신청한 팀 목록 조회
+  getAppliedTeams: () => Promise<{ success: boolean; message: string; data: TeamDatas[] }>
+  //팀원 목록 조회
+  getTeamMembers: (teamId: UUID) => Promise<{ success: boolean; message: string; data: User[] }>
+
+}
 
 interface AuthContextType {
   user: User | null 
@@ -54,6 +115,7 @@ interface AuthContextType {
   //프로필 데이터를 DB에 저장
   saveProfile: (profile: Profile) => Promise<{ success: boolean; message: string;}>  
   getOtherUserProfile :( userId : string ) => Promise<{ success: boolean; otherUserProfile?: Profile | null; message?: string  } | null>
+  getAllUserProfiles: () => Promise<{ success: boolean; message: string; data: Profile[] }>  
   signUp: (email: string, password: string, username: string, phone: string) => Promise<{ success: boolean; message: string }>
   login: (email: string, password: string) => Promise<{ success: boolean; message: string }>
   logout: () => void
@@ -65,7 +127,11 @@ interface AuthContextType {
   
 }
 
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
+  // 팀 컨텍스트 생성
+const TeamContext = createContext<TeamContextType | undefined>(undefined)
 
 const AUTH_SERVER_URL = 'http://localhost:60000'; // auth-server 직접 호출
 const API_GATEWAY_URL = 'http://localhost:8080'; // api-gateway 호출
@@ -79,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setIsLoading(true)
     const checkSession = async () => {
-        console.log("세션 확인 중...")
+        //console.log("세션 확인 중...")
       try {
         
         const res = await fetch(`${AUTH_SERVER_URL}/auth/refresh`, {
@@ -90,7 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (res.ok) {
 
           const data = await res.json();
-          console.log("세션 확인 성공:", data);
+          //console.log("세션 확인 성공:", data);
 
           // 자동 로그인 후 사용자 정보 가져오기
           const meRes = await fetch(`${API_GATEWAY_URL}/api/users/me`, {
@@ -286,13 +352,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   //프로필 데이터가 없을 경우
-  const FallbackProfile = (): Profile => ({  
+  const FallbackProfile = (): Profile => ({
+    userId: "",
     fullName: "",
     bio: "",
     profileImageUrl: "/placeholder.svg",
     education: "",
     experience: "",
     portfolioUrl: "",
+    isPublic: false, // 기본값으로 false 설정
   });
 
   //자신의 프로필 정보 불러오기
@@ -324,12 +392,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (profileData) { 
 
         const parsedProfile: Profile = {
-          fullName: profileData.fullName || "user",
+          userId: profileData.userId || user.id, // user.id를 기본값으로 사용
+          fullName: profileData.fullName || "",
           bio: profileData.bio || "",
           profileImageUrl: profileData.profileImageUrl || "/placeholder.svg",
           education: profileData.education || "",
           experience: profileData.experience || "",
           portfolioUrl: profileData.portfolioUrl || "",
+          isPublic: profileData.isPublic !== undefined ? profileData.isPublic : false, // isPublic이 없으면 기본값 false
         };
         
         return {
@@ -379,7 +449,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         profileImageUrl: profile?.profileImageUrl, //| 'https://example.com/profile.jpg',
                         education: profile?.education,
                         experience: profile?.experience,
-                        portfolioUrl: profile?.portfolioUrl //'https://example.com/portfolio'
+                        portfolioUrl: profile?.portfolioUrl, //'https://example.com/portfolio'
+                        isPublic: profile?.isPublic
                     })
                 });
 
@@ -398,7 +469,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
   }
-
   /*
     특정 사용자의 프로필 조회
     프로필이 없으면 null 리턴
@@ -424,16 +494,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const profileData = await response.json()     
-      //console.log("profileData : " + profileData.portfolioUrl)
+ 
       if (profileData) { 
 
         const parsedProfile: Profile = {
+          userId: profileData.userId,
           fullName: profileData.fullName,
           bio: profileData.bio,
           profileImageUrl: profileData.profileImageUrl,
           education: profileData.education ,
           experience: profileData.experience ,
           portfolioUrl: profileData.portfolioUrl,
+          isPublic: profileData.isPublic, // isPublic이 없으면 기본값 false
         };
 
         return {
@@ -462,10 +534,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
     }
-
   }
+  /*모든 사용자의 프로필을 가져옴*/
+  const getAllUserProfiles = async (): Promise<{ success: boolean; message: string; data: Profile[] }> => {
+    try {
+      const response = await fetch(`${API_GATEWAY_URL}/api/users/profiles`, {
+                    method: 'GET',
+                    credentials: 'include'
+      });      
 
+      if (!response.ok) {
+        return { success: false, message: "사용자 프로필 데이터를 불러오지 못했습니다.", data: [] }
+      }
 
+      const userSkillResponse = await fetch(`${API_GATEWAY_URL}/api/users/skills`, {
+                    method: 'GET',
+                    credentials: 'include'
+      }); 
+
+      if (!userSkillResponse.ok) {
+        return { success: false, message: "사용자 스킬 데이터를 불러오지 못했습니다.", data: [] }
+      }else {
+        console.log("사용자 스킬 데이터 불러오기 성공")
+        
+      }
+      const profilesData = await response.json();
+
+      const userSkillData = await userSkillResponse.json();
+
+      //console.log(userSkillData)
+
+      const profiles: Profile[] = profilesData.map((profile: any) => ({
+        userId: profile.userId,
+        fullName: profile.fullName,
+        bio: profile.bio,
+        profileImageUrl: profile.profileImageUrl || "/placeholder.svg",
+        education: profile.education || "",
+        experience: profile.experience || "",
+        portfolioUrl: profile.portfolioUrl || "",
+        isPublic: profile.isPublic !== undefined ? profile.isPublic : false, // isPublic이 없으면 기본값 false
+        skills: userSkillData.filter((skill: any) => skill.userId === profile.userId)
+      }));
+
+      return { success: true, message: "사용자 프로필 데이터를 성공적으로 불러왔습니다.", data: profiles }
+
+    } catch (error) {
+
+      console.error("사용자 프로필 데이터 불러오기 오류:", error)
+
+      return { success: false, message: "사용자 프로필 데이터를 불러오는 중 오류가 발생했습니다.", data: [] }
+
+    }
+  }
   //사용자가 등록한 스킬 정보를 가져옵니다.
   const viewUserSkills = async (): Promise< { success: boolean; message: string; data: UserSkills[] | [] }> => {
     //사용자 정보 체크
@@ -490,15 +610,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const rawSkills: any[] = await response.json();
 
       // 데이터 파싱 (string → number 변환)
-      const userSkills: UserSkills[] = rawSkills.map((item) => ({
-        id: item.id,
-        userId: item.userId, // 또는 item.userID, 백엔드 응답 확인 필요
-        skillId: Number(item.skillId),
-        proficiency: Number(item.proficiency),
-        created_at: item.created_at,
+      const userSkills: UserSkills[] = rawSkills.map((skill: any) => ({
+        id: skill.id || "",
+        userId: skill.userId || user.id, // user.id를 기본값으로 사용
+        skillId: skill.skillId || 0, // skillId가 없으면 기본값
+        skillName: skill.skillName || "",
+        category: skill.category || "",
+        description: skill.description || "",
+        proficiency: skill.proficiency || 0, // 프로피션시 기본값
+        created_at: skill.created_at || new Date().toISOString(), // created_at이 없으면 현재 시간
+
       }));
 
-      
       return {
         success: true,
         message: "사용자 스킬 데이터를 불러왔습니다.",
@@ -523,7 +646,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         success: false,
         message: "사용자 정보가 없습니다.",        
       }
-      
+      console.log("사용자 스킬 정보 저장 요청:", skills)
+
+      if (skills.length === 0) {
+        return {
+          success: false,
+          message: "저장할 스킬 정보가 없습니다.",
+        }
+      }
+
+
+    const requestBody = {
+    userId: user.id,
+    skills: skills.map(skill => ({
+      skillId: skill.skillId,
+      proficiency: 3, // ← 예시. 실제론 사용자 입력값이 있어야 함
+    })),
+  };
 
     try {
       //데이터 요청
@@ -533,14 +672,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     headers: {
                       'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(skills), // 💡 핵심: skills 배열 그대로 전송
+                    body: JSON.stringify(requestBody), // 💡 핵심: skills 배열 그대로 전송
       });
      
       //데이터가 없으면
       if (!response.ok) {
-        return{ 
+        return {
           success: false,
-          message : "사용자 스킬 데이터가 없습니다." } 
+          message : "사용자 스킬 데이터가 없습니다."
+        }
       }
 
       return {
@@ -577,10 +717,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         'Content-Type': 'application/json',
                     },
                     credentials: 'include',                   
-                });
+                });      
 
-                
-      
       if (!response.ok) {        
         return { success: false, message: "기술 데이터를 불러오기에 실패했습니다.", data : [] }
       }
@@ -592,8 +730,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         category: skill.category || "",
         description: skill.description || "",
       }));
-
-      //setArraySkills(allSkills)
 
       return { 
         success : true, 
@@ -612,25 +748,152 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const value: AuthContextType = {
+    //사용자 정보 관련 기능
     user,
     isLoading,
     isAuthenticated: !!user && !isLoading, // user가 존재하고 로딩 중이 아닐 때 인증됨
     signUp,
-    viewProfile,
-    saveProfile,
     login,
     logout,
+    viewProfile,
+    saveProfile,
     updateUser,
     viewUserSkills,
     saveUserSkills,
     getSkills,
     getNcsCategory,
-    getOtherUserProfile, 
+    getOtherUserProfile,
+    getAllUserProfiles,
   }
-  
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  
 }
+
+export function TeamProvider({ children }: { children: React.ReactNode }) {
+
+  const teamContextValue: TeamContextType = {
+    Teams: [], // 초기값은 빈 배열로 설정
+    isLoading: false,
+    setIsLoading: () => { },
+    getTeam: async (teamId: UUID) => {
+      return { success: false, message: "팀 정보를 불러오는 기능은 아직 구현되지 않았습니다.", team: null }
+    },
+    createTeam: function (teamData: TeamDatas): Promise<{ success: boolean; message: string; team: TeamDatas | null }> {
+      throw new Error("Function not implemented.")
+    },
+    updateTeam: function (teamId: UUID, teamData: Partial<TeamDatas>): Promise<{ success: boolean; message: string; team: TeamDatas | null }> {
+      throw new Error("Function not implemented.")
+    },
+    deleteTeam: function (teamId: UUID): Promise<{ success: boolean; message: string }> {
+      throw new Error("Function not implemented.")
+    },
+    applyToTeam: function (teamId: UUID): Promise<{ success: boolean; message: string }> {
+      throw new Error("Function not implemented.")
+    },
+    approveTeamApplication: function (teamId: UUID, userId: UUID): Promise<{ success: boolean; message: string }> {
+      throw new Error("Function not implemented.")
+    },
+    rejectTeamApplication: function (teamId: UUID, userId: UUID): Promise<{ success: boolean; message: string }> {
+      throw new Error("Function not implemented.")
+    },
+    leaveTeam: function (teamId: UUID): Promise<{ success: boolean; message: string }> {
+      throw new Error("Function not implemented.")
+    },
+    changeTeamLeader: function (teamId: UUID, newLeaderId: UUID): Promise<{ success: boolean; message: string }> {
+      throw new Error("Function not implemented.")
+    },
+    getAllTeams: function (): Promise<{ success: boolean; message: string; data: TeamDatas[] }> {
+      throw new Error("Function not implemented.")
+    },
+    getMyTeams: function (): Promise<{ success: boolean; message: string; data: TeamDatas[] }> {
+       try {
+        const response = fetch(`${API_GATEWAY_URL}/api/teams`, {
+          method: 'GET',
+          credentials: 'include' // JWT 쿠키 포함
+        });
+        return response.then(async (res) => {
+          if (!res.ok) {
+            const msg = await res.text()
+            return { success: false, message: msg || "팀 목록을 불러오지 못했습니다.", data: [] }
+          }
+          const data = await res.json()          
+          //console.log(data)
+          const teams: TeamDatas[] = data.content.map((team: TeamDatas) => ({
+
+            id: team.id,
+            name: team.name,
+            description: team.description,
+            leaderId: team.leaderId,
+            contestId: team.contestId,
+            isRecruiting: team.isRecruiting,
+            isPublic: team.isPublic,
+            maxMembers: team.maxMembers,
+            createdAt: new Date(team.createdAt),
+            updatedAt: new Date(team.updatedAt),
+            allowDirectApply: team.allowDirectApply,
+            categoryIds: team.categoryIds || [],
+            contactInfo: team.contactInfo || "",
+            contactMethod: team.contactMethod || "",
+            createdByUserId: team.createdByUserId,
+            location: team.location || "",
+            neededRoles: team.neededRoles || [],
+            requirements: team.requirements || [],
+            skills: team.skills || []
+          }))
+
+          //console.log(teams)
+
+          return { success: true, message: "팀 목록을 성공적으로 불러왔습니다.", data: teams }
+        })
+      } catch (error) {
+        console.error("팀 목록 불러오기 오류:", error)
+        return Promise.resolve({
+          success: false,
+          message: "팀 목록을 불러오는 중 오류가 발생했습니다.",
+          data: []
+        })
+      }
+    },
+    //내가 신청한 팀 목록 조회 구현
+    getAppliedTeams: function (): Promise<{ success: boolean; message: string; data: TeamDatas[] }> {
+       try {
+        const response = fetch(`${API_GATEWAY_URL}/api/teams/users/me/applications`, {
+          method: 'GET',
+          credentials: 'include'       
+        });
+
+        
+        return response.then(async (res) => {
+          if (!res.ok) {
+            const msg = await res.text()
+            return { success: false, message: msg + " 팀 목록을 불러오지 못했습니다.", data: [] }
+          }
+          const data = await res.json()         
+
+          return { success: true, message: "팀 목록을 성공적으로 불러왔습니다.", data: [] }
+        })
+      } catch (error) {
+        console.error("팀 목록 불러오기 오류:", error)
+        return Promise.resolve({
+          success: false,
+          message: "팀 목록을 불러오는 중 오류가 발생했습니다.",
+          data: []
+        })
+      }
+    },
+    getTeamMembers: function (teamId: UUID): Promise<{ success: boolean; message: string; data: User[] }> {
+      throw new Error("Function not implemented.")
+    }
+  }
+
+  return (
+    <TeamContext.Provider value={teamContextValue}>
+      {children}
+    </TeamContext.Provider>
+  )
+}
+
 
 export function useAuth() {
   const context = useContext(AuthContext)
@@ -640,3 +903,10 @@ export function useAuth() {
   return context
 } 
 
+export function useTeam() {
+  const context = useContext(TeamContext)
+  if (context === undefined) {
+    throw new Error("useTeam must be used within a TeamProvider")
+  }
+  return context
+}

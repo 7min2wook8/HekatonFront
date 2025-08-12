@@ -1,9 +1,8 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, useCallback } from "react"
+import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,6 +18,28 @@ import Footer from "@/components/footer"
 import ProtectedRoute from "@/components/protected-route"
 import { useAuth } from "@/contexts/auth-context"
 
+// 백엔드 TeamsResponse DTO에 있는 필드들만을 기반으로 정의
+interface Team {
+  id: string;
+  name: string;
+  description: string;
+  leaderId: string;
+  contestId: string;
+  isRecruiting: boolean; // 모집중 여부
+  isPublic: boolean;
+  maxMembers: number;
+  createdByUserId: string;
+  createdAt: string;
+  updatedAt: string;
+  neededRoles: string[];
+  skills: string[];
+  location: string;
+  requirements: string;
+  contactMethod: "platform" | "email" | "kakao" | "discord";
+  contactInfo: string;
+  allowDirectApply: boolean;
+}
+
 const availableRoles = [
   "프론트엔드 개발자",
   "백엔드 개발자",
@@ -32,161 +53,263 @@ const availableRoles = [
   "DevOps 엔지니어",
   "QA 엔지니어",
   "프로젝트 매니저"
-]
+];
 
 const availableSkills = [
   "React", "Vue.js", "Angular", "Node.js", "Python", "Java", "JavaScript", "TypeScript",
   "Flutter", "React Native", "Swift", "Kotlin", "Figma", "Sketch", "Photoshop",
   "마케팅", "SEO", "콘텐츠", "데이터분석", "머신러닝", "AWS", "Docker", "Kubernetes"
-]
+];
 
-// ⭐️ 중요: contestId를 백엔드의 TeamsCreateRequest DTO에서 UUID로 받으므로,
-// 여기도 UUID 문자열 형태로 변경했습니다. 실제 백엔드 데이터에 맞춰야 합니다.
 const contests = [
   { id: "1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d", title: "2025 스타트업 아이디어 공모전" },
   { id: "2a3b4c5d-6e7f-8a9b-0c1d-2e3f4a5b6c7d", title: "AI 혁신 아이디어 공모전" },
   { id: "3a4b5c6d-7e8f-9a0b-1c2d-3e4f5a6b7c8d", title: "모바일 앱 개발 공모전" },
   { id: "4a5b6c7d-8e9f-0a1b-2c3d-4e5f6a7b8c9d", title: "환경보호 캠페인 공모전" },
   { id: "5a6b7c8d-9e0f-1a2b-3c4d-5e6f7a8b9c0d", title: "사회혁신 아이디어 공모전" }
-]
+];
 
-function TeamCreateContent() {
-  const { user } = useAuth()
-  const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
-  const [error, setError] = useState<string | null>(null) // API 오류 메시지를 저장할 상태
+function TeamEditContent() {
+  const { user, isAuthenticated } = useAuth();
+  const router = useRouter();
+  const params = useParams();
+  const teamId = params.teamId as string;
 
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    contestId: "", // contestId는 문자열(UUID)로 관리
-    location: "",
-    maxMembers: 4,
-    neededRoles: [] as string[],
-    skills: [] as string[],
-    requirements: "",
-    contactMethod: "platform", // platform, email, kakao, discord
-    contactInfo: "",
-    isPublic: true,
-    allowDirectApply: true
-  })
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // formData의 타입을 명시적으로 지정
+  const [formData, setFormData] = useState<Team | null>(null);
 
-  const [newRole, setNewRole] = useState("")
-  const [newSkill, setNewSkill] = useState("")
+  const [newRole, setNewRole] = useState("");
+  const [newSkill, setNewSkill] = useState("");
 
-  const API_GATEWAY_URL = 'http://localhost:8080'; // 실제 API Gateway URL 또는 백엔드 URL
+  const API_GATEWAY_URL = 'http://localhost:8080';
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError(null) // 새로운 요청 전에 오류 상태 초기화
-
-    if (!user) {
-      setError("로그인이 필요합니다.")
-      setIsLoading(false)
-      return
-    }
-
-    // ⭐️ 수정된 부분: 필수 입력 필드 유효성 검사
-    const { name, description, contestId, location } = formData;
-    if (!name || !description || !contestId || !location) {
-      setError("팀명, 팀 소개, 참가 공모전, 활동 지역은 필수 입력 항목입니다.");
+  // 1. 팀 데이터 불러오기
+  const fetchTeamData = useCallback(async () => {
+    if (!teamId) {
+      setError("팀 ID가 제공되지 않았습니다.");
       setIsLoading(false);
       return;
     }
-
-    // ⭐️ 추가된 부분: 모집 정보 유효성 검사
-    if (formData.neededRoles.length === 0 && formData.skills.length === 0 && formData.requirements.trim() === "") {
-        setError("모집 정보(모집하는 역할, 기술 스택, 지원 요구사항 중 하나)를 입력해주세요.");
-        setIsLoading(false);
-        return;
+    
+    // user 또는 isAuthenticated가 로드될 때까지 기다림
+    if (!user && !isAuthenticated) {
+      setIsLoading(true);
+      return; 
     }
     
+    if (!user) {
+      setError("로그인이 필요합니다.");
+      setIsLoading(false);
+      router.push('/login');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
     try {
-      const payload = {
-        ...formData,
-        // ⭐️ contestId는 이미 UUID 문자열이므로 parseInt를 제거합니다.
-        contestId: formData.contestId || null,
-        // ⭐️ leaderId가 UUID 문자열이라고 가정합니다.
-        leaderId: user.id, // 현재 로그인한 사용자의 ID를 팀장 ID로 추가
-        status: "모집중", // 초기 모집 상태 설정
-        // currentMembers는 백엔드에서 생성 시 1(팀장)로 초기화할 수 있습니다.
-        // rating, applications 등도 백엔드에서 초기화될 수 있습니다.
-      }
-
-      console.log("팀 생성 API 전송 데이터:", payload);
-
-      const response = await fetch(`${API_GATEWAY_URL}/api/teams`, {
-        method: 'POST',
+      const response = await fetch(`${API_GATEWAY_URL}/api/teams/${teamId}`, {
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          // 필요하다면 인증 토큰을 추가합니다. 예:
-          // 'Authorization': `Bearer ${user.token}`
+          // Authorization 헤더는 백엔드 세션/쿠키 또는 전역 인터셉터에서 처리한다고 가정
         },
-        body: JSON.stringify(payload),
-        credentials: 'include', // 세션 쿠키 등을 전송할 경우
-      })
+        credentials: 'include',
+      });
 
       if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error("팀을 찾을 수 없습니다.");
+        }
+        if (response.status === 401 || response.status === 403) {
+          setError("인증되지 않았거나 접근 권한이 없습니다. 다시 로그인해주세요.");
+          router.push('/login');
+          return;
+        }
         const errorData = await response.json();
-        // 백엔드에서 넘어오는 구체적인 오류 메시지를 표시합니다.
-        throw new Error(errorData.message || "팀 생성에 실패했습니다.");
+        throw new Error(errorData.message || "팀 정보를 불러오는 데 실패했습니다.");
       }
 
-      const createdTeam = await response.json()
-      console.log("팀 생성 성공:", createdTeam)
-      setSuccess(true)
+      const data: Team = await response.json();
 
-      // 3초 후 팀 목록으로 이동
-      setTimeout(() => {
-        router.push("/teams")
-      }, 3000)
+      if (user && data.leaderId !== user.id) {
+        setError("팀 수정 권한이 없습니다.");
+        router.push(`/teams/${teamId}`);
+        return;
+      }
+
+      setFormData({
+        ...data,
+        neededRoles: data.neededRoles || [],
+        skills: data.skills || [],
+        location: data.location || "온라인",
+        requirements: data.requirements || "",
+        contactMethod: data.contactMethod || "platform",
+        contactInfo: data.contactInfo || "",
+        allowDirectApply: data.allowDirectApply !== undefined ? data.allowDirectApply : true,
+      });
+
     } catch (err: any) {
-      console.error("팀 생성 오류:", err)
-      setError(err.message || "알 수 없는 오류가 발생했습니다.")
+      console.error("팀 정보 불러오기 오류:", err);
+      setError(err.message || "알 수 없는 오류가 발생했습니다.");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  }, [teamId, user, isAuthenticated, router]);
+
+  useEffect(() => {
+    if (user || isAuthenticated) {
+      fetchTeamData();
+    }
+  }, [user, isAuthenticated, fetchTeamData]);
+
+
+  // 2. 팀 정보 업데이트 (저장)
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    setError(null);
+
+    if (!user || !formData) {
+      setError("로그인이 필요하거나 팀 데이터가 없습니다.");
+      setIsSaving(false);
+      return;
+    }
+
+    // --- 수정된 부분: 모집 중일 때 역할 또는 기술 스택이 비어있는지 확인하는 유효성 검사 추가 ---
+    if (formData.isRecruiting && formData.neededRoles.length === 0 && formData.skills.length === 0) {
+      setError("모집 중인 팀의 경우, 모집하는 역할 또는 필요한 기술 스택 중 하나 이상을 입력해야 합니다.");
+      setIsSaving(false);
+      return;
+    }
+    // -------------------------------------------------------------------------------------
+
+    try {
+      const payload = {
+        name: formData.name,
+        description: formData.description,
+        contestId: formData.contestId,
+        location: formData.location,
+        maxMembers: formData.maxMembers,
+        neededRoles: formData.neededRoles,
+        skills: formData.skills,
+        requirements: formData.requirements,
+        contactMethod: formData.contactMethod,
+        contactInfo: formData.contactInfo,
+        isPublic: formData.isPublic,
+        isRecruiting: formData.isRecruiting,
+        allowDirectApply: formData.allowDirectApply,
+      };
+
+      console.log("팀 수정 API 전송 데이터:", payload);
+
+      const response = await fetch(`${API_GATEWAY_URL}/api/teams/${teamId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          setError("인증되지 않았거나 접근 권한이 없습니다. 다시 로그인해주세요.");
+          router.push('/login');
+          return;
+        }
+        const errorData = await response.json();
+        throw new Error(errorData.message || "팀 정보 수정에 실패했습니다.");
+      }
+
+      console.log("팀 수정 성공!");
+      setSuccess(true);
+
+      setTimeout(() => {
+        router.push(`/teams/${teamId}`);
+      }, 3000);
+
+    } catch (err: any) {
+      console.error("팀 수정 오류:", err);
+      setError(err.message || "알 수 없는 오류가 발생했습니다.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const addRole = () => {
-    if (newRole && !formData.neededRoles.includes(newRole)) {
+    if (formData && newRole && !formData.neededRoles.includes(newRole)) {
       setFormData({
         ...formData,
         neededRoles: [...formData.neededRoles, newRole]
-      })
+      });
     }
-    setNewRole("")
-  }
+    setNewRole("");
+  };
 
   const removeRole = (role: string) => {
-    setFormData({
-      ...formData,
-      neededRoles: formData.neededRoles.filter(r => r !== role)
-    })
-  }
+    if (formData) {
+      setFormData({
+        ...formData,
+        neededRoles: formData.neededRoles.filter(r => r !== role)
+      });
+    }
+  };
 
   const addSkill = () => {
-    if (newSkill && !formData.skills.includes(newSkill)) {
+    if (formData && newSkill && !formData.skills.includes(newSkill)) {
       setFormData({
         ...formData,
         skills: [...formData.skills, newSkill]
-      })
+      });
     }
-    setNewSkill("")
-  }
+    setNewSkill("");
+  };
 
   const removeSkill = (skill: string) => {
-    setFormData({
-      ...formData,
-      skills: formData.skills.filter(s => s !== skill)
-    })
+    if (formData) {
+      setFormData({
+        ...formData,
+        skills: formData.skills.filter(s => s !== skill)
+      });
+    }
+  };
+
+  // 렌더링 로직
+  if (!user && !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="w-10 h-10 animate-spin text-blue-500" />
+        <p className="ml-3 text-lg text-gray-700">인증 정보를 확인 중...</p>
+      </div>
+    );
   }
 
-  // user가 없으면 ProtectedRoute가 리다이렉트하므로, 여기서 렌더링할 필요는 없습니다.
-  // 다만 개발 중이거나 ProtectedRoute가 완전하지 않다면 유용할 수 있습니다.
-  if (!user) return null
+  if (isLoading && user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="w-10 h-10 animate-spin text-blue-500" />
+        <p className="ml-3 text-lg text-gray-700">팀 정보를 불러오는 중...</p>
+      </div>
+    );
+  }
+
+  if (error && !formData) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+          <span className="block sm:inline">{error}</span>
+        </div>
+        <Link href="/teams">
+          <Button>팀 목록으로 돌아가기</Button>
+        </Link>
+      </div>
+    );
+  }
 
   if (success) {
     return (
@@ -196,15 +319,13 @@ function TeamCreateContent() {
           <Card className="max-w-md mx-auto text-center">
             <CardContent className="p-8">
               <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">팀 생성 완료!</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">팀 정보 수정 완료!</h2>
               <p className="text-gray-600 mb-6">
-                팀이 성공적으로 생성되었습니다.
-                <br />
-                이제 팀원들의 지원을 받을 수 있어요!
+                팀 정보가 성공적으로 업데이트되었습니다.
               </p>
               <div className="flex gap-2">
-                <Link href="/teams" className="flex-1">
-                  <Button className="w-full">팀 목록 보기</Button>
+                <Link href={`/teams/${teamId}`} className="flex-1">
+                  <Button className="w-full">팀 상세보기</Button>
                 </Link>
                 <Link href="/mypage" className="flex-1">
                   <Button variant="outline" className="w-full bg-transparent">
@@ -217,26 +338,27 @@ function TeamCreateContent() {
         </div>
         <Footer />
       </div>
-    )
+    );
   }
+
+  if (!formData) return null;
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
 
       <div className="container mx-auto px-4 py-8">
-        {/* 헤더 */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
-            <Link href="/teams">
+            <Link href={`/teams/${teamId}`}>
               <Button variant="outline" size="sm">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 돌아가기
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">팀 만들기</h1>
-              <p className="text-gray-600">새로운 팀을 만들고 팀원을 모집해보세요</p>
+              <h1 className="text-3xl font-bold text-gray-900">팀 정보 수정</h1>
+              <p className="text-gray-600">{formData.name} 팀의 정보를 수정합니다</p>
             </div>
           </div>
         </div>
@@ -249,9 +371,7 @@ function TeamCreateContent() {
 
         <form onSubmit={handleSubmit} className="space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* 메인 정보 */}
             <div className="lg:col-span-2 space-y-6">
-              {/* 기본 정보 */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
@@ -347,10 +467,26 @@ function TeamCreateContent() {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="isRecruiting">모집 상태</Label>
+                    <Select
+                      value={formData.isRecruiting.toString()}
+                      onValueChange={(value) => setFormData({ ...formData, isRecruiting: value === 'true' })}
+                      required
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="모집 상태 선택" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="true">모집중</SelectItem>
+                        <SelectItem value="false">모집완료</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </CardContent>
               </Card>
 
-              {/* 모집 정보 */}
               <Card>
                 <CardHeader>
                   <CardTitle>모집 정보</CardTitle>
@@ -443,7 +579,6 @@ function TeamCreateContent() {
                 </CardContent>
               </Card>
 
-              {/* 연락 방법 */}
               <Card>
                 <CardHeader>
                   <CardTitle>연락 방법</CardTitle>
@@ -453,7 +588,7 @@ function TeamCreateContent() {
                     <Label>연락 방법</Label>
                     <Select
                       value={formData.contactMethod}
-                      onValueChange={(value) => setFormData({ ...formData, contactMethod: value })}
+                      onValueChange={(value: "platform" | "email" | "kakao" | "discord") => setFormData({ ...formData, contactMethod: value })}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -486,9 +621,7 @@ function TeamCreateContent() {
               </Card>
             </div>
 
-            {/* 사이드바 */}
             <div className="space-y-6">
-              {/* 팀장 정보 */}
               <Card>
                 <CardHeader>
                   <CardTitle>팀장 정보</CardTitle>
@@ -498,15 +631,12 @@ function TeamCreateContent() {
                     <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
                       <span className="text-blue-600 font-bold text-xl">{user?.username?.[0] || ""}</span>
                     </div>
-                    <h3 className="font-medium">{user.username}</h3>
-                    <p className="text-sm text-gray-600">{user.email}</p>
-                    {/* user.location이 존재한다면 표시 */}
-                    {/* <p className="text-sm text-gray-600 mt-1">{user.location || "위치 미설정"}</p> */}
+                    <h3 className="font-medium">{user?.username}</h3>
+                    <p className="text-sm text-gray-600">{user?.email}</p>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* 설정 */}
               <Card>
                 <CardHeader>
                   <CardTitle>팀 설정</CardTitle>
@@ -536,24 +666,23 @@ function TeamCreateContent() {
                 </CardContent>
               </Card>
 
-              {/* 제출 버튼 */}
               <Card>
                 <CardContent className="p-4">
-                  <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
-                    {isLoading ? (
+                  <Button type="submit" className="w-full" size="lg" disabled={isSaving}>
+                    {isSaving ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        생성 중...
+                        저장 중...
                       </>
                     ) : (
                       <>
                         <Save className="w-4 h-4 mr-2" />
-                        팀 만들기
+                        변경 사항 저장
                       </>
                     )}
                   </Button>
                   <p className="text-xs text-gray-500 text-center mt-2">
-                    팀 생성 후 언제든지 수정할 수 있습니다
+                    변경 사항은 즉시 반영됩니다
                   </p>
                 </CardContent>
               </Card>
@@ -564,13 +693,13 @@ function TeamCreateContent() {
 
       <Footer />
     </div>
-  )
+  );
 }
 
-export default function TeamCreatePage() {
+export default function TeamEditPage() {
   return (
     <ProtectedRoute>
-      <TeamCreateContent />
+      <TeamEditContent />
     </ProtectedRoute>
-  )
+  );
 }

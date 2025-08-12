@@ -87,7 +87,7 @@ interface TeamContextType{
   //팀 삭제
   deleteTeam: (teamId: UUID) => Promise<{ success: boolean; message: string }>
   //팀 참여 신청
-  applyToTeam: (teamId: UUID) => Promise<{ success: boolean; message: string }>
+  applyToTeam: (teamId: UUID) => Promise<{ success: boolean; message: string }> 
   //팀 참여 승인
   approveTeamApplication: (teamId: UUID, userId: UUID) => Promise<{ success: boolean; message: string }>
   //팀 참여 거절
@@ -780,6 +780,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
       return { success: false, message: "팀 정보를 불러오는 기능은 아직 구현되지 않았습니다.", team: null }
     },
     createTeam: function (teamData: TeamDatas): Promise<{ success: boolean; message: string; team: TeamDatas | null }> {
+      //return { success : false, message: "팀 목록을 불러오지 못했습니다.", team: null }
       throw new Error("Function not implemented.")
     },
     updateTeam: function (teamId: UUID, teamData: Partial<TeamDatas>): Promise<{ success: boolean; message: string; team: TeamDatas | null }> {
@@ -806,8 +807,10 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
     getAllTeams: function (): Promise<{ success: boolean; message: string; data: TeamDatas[] }> {
       throw new Error("Function not implemented.")
     },
+    //참여중인 팀 목록 요청
     getMyTeams: function (): Promise<{ success: boolean; message: string; data: TeamDatas[] }> {
        try {
+        //호출 코드 수정해야함(컨트롤러에서 구현되면 바꿔야함 0812)
         const response = fetch(`${API_GATEWAY_URL}/api/teams`, {
           method: 'GET',
           credentials: 'include' // JWT 쿠키 포함
@@ -853,6 +856,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
         })
       }
     },
+
     //내가 신청한 팀 목록 조회 구현
     getAppliedTeams: function (): Promise<{ success: boolean; message: string; data: TeamDatas[] }> {
        try {
@@ -865,17 +869,17 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
         return response.then(async (res) => {
           if (!res.ok) {
             const msg = await res.text()
-            return { success: false, message: msg + " 팀 목록을 불러오지 못했습니다.", data: [] }
+            return { success: false, message: msg + "신청한 팀 목록을 불러오지 못했습니다.", data: [] }
           }
           const data = await res.json()         
 
-          return { success: true, message: "팀 목록을 성공적으로 불러왔습니다.", data: [] }
+          return { success: true, message: "신청한 팀 목록을 성공적으로 불러왔습니다.", data: [] }
         })
       } catch (error) {
-        console.error("팀 목록 불러오기 오류:", error)
+        console.error("신청한 팀 목록 불러오기 오류:", error)
         return Promise.resolve({
           success: false,
-          message: "팀 목록을 불러오는 중 오류가 발생했습니다.",
+          message: "신청한 팀 목록을 불러오는 중 오류가 발생했습니다.",
           data: []
         })
       }

@@ -11,53 +11,91 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2 } from "lucide-react"
+import { Loader2, Eye, EyeOff } from "lucide-react"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
+import ErrorDialog from "@/components/error-dialog"
 import { useAuth } from "@/contexts/auth-context"
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
-    username: "",
+    id: "",
     password: "",
   })
+  const [showPassword, setShowPassword] = useState(false)
+  const [attemptCount, setAttemptCount] = useState(0)
+  const [errorType, setErrorType] = useState<"auth" | "network" | "validation" | "general" | null>(null)
   const [error, setError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
-
+  const [showErrorDialog, setShowErrorDialog] = useState(false)
+  const [errorDialogData, setErrorDialogData] = useState({
+    title: "",
+    message: "",
+    type: "general" as "auth" | "network" | "validation" | "general",
+  })
   const { login, isAuthenticated } = useAuth()
   const router = useRouter()
 
   // 이미 로그인된 경우 홈으로 리다이렉트
   useEffect(() => {
     if (isAuthenticated) {
-      console.log("이미 로그인되어 있습니다. 홈으로 리다이렉트합니다.")
       router.push("/")
     }
   }, [isAuthenticated, router])
 
-  // 로그인 폼 제출 핸들러
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
+    setErrorType(null)
     setIsSubmitting(true)
 
     try {
-       
-        // 로그인 성공 시 auth-context의 login 함수 호출
-        // 이 함수는 세션을 저장하고 사용자 정보를 업데이트합니다.
-        const result = await login(formData.username, formData.password)
-        // 로그인 성공 시 홈으로 이동
-        if (result.success) {
-          router.push("/")
-        } else {
-          setError(result.message)
-        }
-       
+      const result = await login(formData.id, formData.password)
+
+      if (result.success) {
+        router.push("/")
+      } else {
+        setAttemptCount((prev) => prev + 1)
+        handleLoginError(result.message)
+      }
     } catch (error) {
-      setError("로그인 중 오류가 발생했습니다.")
+      setAttemptCount((prev) => prev + 1)
+      handleLoginError("네트워크 연결을 확인하고 다시 시도해주세요.")
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const handleLoginError = (message: string) => {
+    if (message.includes("아이디") || message.includes("비밀번호") || message.includes("올바르지 않습니다")) {
+      setError("입력하신 아이디 또는 비밀번호가 올바르지 않습니다.")
+      setErrorType("auth")
+    } else if (message.includes("계정") && message.includes("존재하지")) {
+      setError("존재하지 않는 계정입니다. 아이디를 확인해주세요.")
+      setErrorType("auth")
+    } else if (message.includes("계정") && message.includes("잠금")) {
+      setError("보안을 위해 계정이 일시적으로 잠겼습니다. 잠시 후 다시 시도해주세요.")
+      setErrorType("validation")
+    } else if (message.includes("이메일") && message.includes("인증")) {
+      setError("이메일 인증이 완료되지 않았습니다. 이메일을 확인해주세요.")
+      setErrorType("validation")
+    } else if (message.includes("네트워크") || message.includes("연결") || message.includes("서버")) {
+      setError("네트워크 연결을 확인하고 다시 시도해주세요.")
+      setErrorType("network")
+    } else if (message.includes("점검")) {
+      setError("현재 서비스 점검 중입니다. 잠시 후 다시 이용해주세요.")
+      setErrorType("network")
+    } else {
+      setError(message || "알 수 없는 오류가 발생했습니다. 잠시 후 다시 시도해주세요.")
+      setErrorType("general")
+    }
+  }
+
+  const handleRetry = () => {
+    setShowErrorDialog(false)
+    setError("")
+    // 폼 포커스
+    document.getElementById("email")?.focus()
   }
 
   return (
@@ -69,35 +107,74 @@ export default function LoginPage() {
           <Card>
             <CardHeader className="text-center">
               <CardTitle className="text-2xl font-bold">로그인</CardTitle>
-              <p className="text-gray-600">이퀄로컬에 오신 것을 환영합니다</p>
             </CardHeader>
-            <CardContent className="space-y-6">  
+            <CardContent className="space-y-6">
+              {/* 에러 메시지 표시 */}
+              {error && (
+                <Alert
+                  variant={errorType === "network" ? "destructive" : "default"}
+                  className={`
+                  ${errorType === "auth" ? "border-red-200 bg-red-50" : ""}
+                  ${errorType === "network" ? "border-red-200 bg-red-50" : ""}
+                  ${errorType === "validation" ? "border-yellow-200 bg-yellow-50" : ""}
+                `}
+                >
+                  <AlertDescription className="flex items-center justify-between">
+                    <span
+                      className={`
+                      ${errorType === "auth" ? "text-red-700" : ""}
+                      ${errorType === "network" ? "text-red-700" : ""}
+                      ${errorType === "validation" ? "text-yellow-700" : ""}
+                    `}
+                    >
+                      {error}
+                    </span>
+                    {attemptCount >= 3 && errorType === "auth" && (
+                      <Link href="/forgot-password" className="text-sm underline hover:no-underline ml-2">
+                        비밀번호 찾기
+                      </Link>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="username">아이디</Label>
+                  <Label htmlFor="email">아이디</Label>
                   <Input
-                    id="username"
-                    type="username"
-                    value={formData.username}
-                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                    id="text"
+                    type="text"
+                    value={formData.id}
+                    onChange={(e) => setFormData({ ...formData, id: e.target.value })}
                     placeholder="아이디를 입력하세요"
                     required
                     disabled={isSubmitting}
+                    className={attemptCount > 0 && errorType === "auth" ? "border-red-300 focus:border-red-500" : ""}
                   />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="password">비밀번호</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    placeholder="비밀번호를 입력하세요"
-                    required
-                    disabled={isSubmitting}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      placeholder="비밀번호를 입력하세요"
+                      required
+                      disabled={isSubmitting}
+                      className={`pr-10 ${attemptCount > 0 && errorType === "auth" ? "border-red-300 focus:border-red-500" : ""}`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      disabled={isSubmitting}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
 
                 <Button type="submit" className="w-full" disabled={isSubmitting}>
@@ -132,7 +209,7 @@ export default function LoginPage() {
               <div className="text-center space-y-2">
                 <p className="text-sm text-gray-600">
                   계정이 없으신가요?{" "}
-                  <Link href="/signup" className="text-blue-600 hover:underline">
+                  <Link href="/signup/terms" className="text-blue-600 hover:underline">
                     회원가입
                   </Link>
                 </p>
@@ -144,6 +221,17 @@ export default function LoginPage() {
           </Card>
         </div>
       </div>
+
+      {/* 에러 다이얼로그 */}
+      <ErrorDialog
+        isOpen={showErrorDialog}
+        onClose={() => setShowErrorDialog(false)}
+        title={errorDialogData.title}
+        message={errorDialogData.message}
+        type={errorDialogData.type}
+        onRetry={handleRetry}
+        showHelp={attemptCount >= 3}
+      />
 
       <Footer />
     </div>

@@ -818,7 +818,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
             return { success: false, message: msg || "팀 목록을 불러오지 못했습니다.", data: [] }
           }
           const data = await res.json()          
-          //console.log(data)
+          
           const teams: TeamDatas[] = data.content.map((team: TeamDatas) => ({
 
             id: team.id,
@@ -841,9 +841,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
             requirements: team.requirements || [],
             skills: team.skills || []
           }))
-
-          //console.log(teams)
-
+          
           return { success: true, message: "팀 목록을 성공적으로 불러왔습니다.", data: teams }
         })
       } catch (error) {

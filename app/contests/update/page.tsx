@@ -1,3 +1,4 @@
+// app/contests/update/page.tsx
 "use client";
 
 import type React from "react";
@@ -67,13 +68,13 @@ const eligibilityOptions = [
 function ContestEditContent() {
   const { user } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams(); // useParams 대신 useSearchParams 훅 사용
-  const contestId = searchParams.get("id"); // URL 쿼리 파라미터 'id' 값 가져오기
+  const searchParams = useSearchParams();
+  const contestId = searchParams.get("id");
 
   const API_GATEWAY_URL = "http://localhost:8080";
 
-  const [isLoading, setIsLoading] = useState(true); // 초기 데이터 로딩 상태
-  const [isSubmitting, setIsSubmitting] = useState(false); // 폼 제출 중 상태
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -103,7 +104,7 @@ function ContestEditContent() {
   const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
 
-  //카테고리 API 호출
+  // 카테고리 API 호출
   useEffect(() => {
     const fetchCategories = async () => {
       setIsCategoriesLoading(true);
@@ -139,7 +140,7 @@ function ContestEditContent() {
     };
 
     fetchCategories();
-  }, []);
+  }, [API_GATEWAY_URL]);
 
   // 컴포넌트 마운트 시 기존 공모전 데이터 불러오기
   useEffect(() => {
@@ -151,19 +152,27 @@ function ContestEditContent() {
       setIsLoading(false);
       return;
     }
+    
+    // user 정보가 없으면 로딩 중 상태로 유지 (ProtectedRoute가 리다이렉트 처리)
+    if (!user) {
+        setIsLoading(true);
+        return;
+    }
 
     const fetchContestData = async () => {
       setIsLoading(true);
-      setError(null); // 에러 초기화
+      setError(null);
       try {
         const response = await fetch(
-          `${API_GATEWAY_URL}/api/contests/${contestId}`,
+          `${API_GATEWAY_URL}/api/contests/${contestId}/authenticated`, // 👈 이 부분을 수정
           {
             method: "GET",
             credentials: "include",
+            headers: {
+              "X-User-ID": user.id // 👈 이 부분을 추가
+            }
           }
         );
-
         if (!response.ok) {
           const errorData = await response
             .json()
@@ -195,7 +204,7 @@ function ContestEditContent() {
           prizeDescription: data.prizeDescription || "",
           maxParticipants: data.maxParticipants
             ? String(data.maxParticipants)
-            : "", // 숫자를 문자열로 변환
+            : "",
           eligibility: Array.isArray(data.eligibility) ? data.eligibility : [],
           requirements: data.requirements || "",
           submissionFormat: data.submissionFormat || "",
@@ -213,7 +222,7 @@ function ContestEditContent() {
     };
 
     fetchContestData();
-  }, [contestId, API_GATEWAY_URL]); // contestId와 API_GATEWAY_URL이 변경될 때마다 데이터를 다시 불러옵니다.
+  }, [contestId, user, API_GATEWAY_URL]); // `user` 의존성 추가
 
   // 폼 제출 핸들러 (PUT 요청)
   const handleSubmit = async (e: React.FormEvent) => {
@@ -272,11 +281,12 @@ function ContestEditContent() {
 
     try {
       const response = await fetch(
-        `${API_GATEWAY_URL}/api/contests/${contestId}`,
+        `${API_GATEWAY_URL}/api/contests/${contestId}/update`,
         {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
+            "X-User-ID": user?.id || "",
           },
           credentials: "include",
           body: JSON.stringify(submissionData),
@@ -338,9 +348,7 @@ function ContestEditContent() {
     });
   };
 
-  // 사용자 인증이 완료되지 않았거나 contestId가 없는 경우 로딩 또는 오류 처리
   if (!user) {
-    // user가 없으면 ProtectedRoute에서 처리하겠지만, 혹시 모를 경우를 대비
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <p className="text-gray-600">접근 권한이 없습니다.</p>
@@ -348,7 +356,6 @@ function ContestEditContent() {
     );
   }
 
-  // contestId가 아직 로딩 중이거나 유효하지 않은 경우
   if (isLoading || !contestId) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
@@ -407,7 +414,7 @@ function ContestEditContent() {
         {/* 헤더 */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
-            <Link href={`/contests/${contestId}`}>
+            <Link href={`/contests/${contestId}/update`}>
               <Button variant="outline" size="sm">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 돌아가기

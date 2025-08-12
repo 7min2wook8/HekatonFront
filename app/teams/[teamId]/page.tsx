@@ -108,6 +108,7 @@ function TeamDetailPageContent() {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isJoining, setIsJoining] = useState(false); // 💡 추가: 팀 지원 로딩 상태
   const [error, setError] = useState<string | null>(null);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
 
@@ -124,7 +125,7 @@ function TeamDetailPageContent() {
     setError(null);
     try {
       // 1. 팀 기본 정보 가져오기
-      const teamResponse = await fetch(`${API_GATEWAY_URL}/api/teams/${teamId}`, {
+      const teamResponse = await fetch(`${API_GATEWAY_URL}/api/teams/${teamId}/detail`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -304,13 +305,76 @@ function TeamDetailPageContent() {
     }
   };
 
-  const handleJoinTeam = () => {
-    if (!isAuthenticated) {
+  const handleJoinTeam = async () => {
+    if (!isAuthenticated || !user) {
       toast.warning("로그인이 필요합니다.");
       router.push("/login");
       return;
     }
-    toast.info("팀 지원 기능은 현재 준비 중입니다!");
+
+    if (!team) {
+      toast.error("팀 정보를 찾을 수 없습니다.");
+      return;
+    }
+
+    // 팀장 본인인 경우
+    if (user.id === team.leaderId) {
+      toast.info("팀장은 본인 팀에 지원할 수 없습니다.");
+      return;
+    }
+
+    // 이미 팀원인 경우
+    const isAlreadyMember = teamMembers.some(member => member.userId === user.id) || (user.id === team.leaderId);
+    if (isAlreadyMember) {
+      toast.info("이미 팀원으로 참여 중입니다.");
+      return;
+    }
+
+    // 직접 지원이 허용되지 않은 경우
+    if (!team.allowDirectApply) {
+      toast.warning("이 팀은 직접 지원이 허용되지 않습니다. 팀장에게 연락해주세요.");
+      return;
+    }
+
+    // 모집이 완료되었거나 마감된 경우
+    if (!team.isRecruiting || team.status === "모집완료") {
+      toast.warning("이 팀은 현재 모집 중이 아닙니다.");
+      return;
+    }
+
+    setIsJoining(true);
+    try {
+      // 💡 백엔드 API 호출: 팀 지원 신청
+      // (이전에 저장된 ApplicationsController의 API 엔드포인트와 연결)
+      const response = await fetch(`${API_GATEWAY_URL}/api/teams/${team.id}/applyapplications`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-USER-ID": user.id, // 사용자 ID를 헤더에 포함
+        },
+        // Request body는 지원 관련 추가 정보(예: 자기소개, 지원 동기 등)를 포함
+        // 현재 코드에선 별도의 DTO가 없으므로 빈 객체를 보냄
+        body: JSON.stringify({ /* 필요한 경우 추가 데이터 */ }),
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (response.status === 409) { // HTTP 409 Conflict: 이미 지원했거나 팀원일 경우
+          throw new Error("이미 이 팀에 지원했거나 팀원입니다.");
+        }
+        throw new Error(errorData.message || "팀 지원에 실패했습니다.");
+      }
+
+      toast.success("팀 지원 신청이 완료되었습니다!");
+      // 지원 후 필요에 따라 페이지를 새로고침하거나 상태를 업데이트할 수 있습니다.
+      // 여기서는 성공 메시지를 보여주고 끝냅니다.
+    } catch (err: any) {
+      console.error("팀 지원 오류:", err);
+      toast.error(err.message || "팀 지원 중 오류가 발생했습니다.");
+    } finally {
+      setIsJoining(false);
+    }
   };
 
   const getStatusBadgeVariant = (status?: string, isRecruiting?: boolean) => {
@@ -336,7 +400,9 @@ function TeamDetailPageContent() {
 
   const isLeader = user?.id === team?.leaderId;
   // 💡 수정: 리더를 포함한 총 멤버 수 계산
-  const totalMembers = teamMembers.length + 1;
+  const totalMembers = teamMembers.length;
+  const isTeamFull = team && team.currentMembers && team.maxMembers && team.currentMembers >= team.maxMembers;
+  const isMemberOrLeader = teamMembers.some(member => member.userId === user?.id) || isLeader;
 
   if (isLoading) {
     return (
@@ -631,25 +697,42 @@ function TeamDetailPageContent() {
               </CardContent>
             </Card>
 
-            {!isLeader && team.isRecruiting && (
+            {!isLeader && !isMemberOrLeader && team.isRecruiting && team.allowDirectApply && !isTeamFull && (
               <Card>
                 <CardContent className="p-4">
-                  <Button className="w-full" size="lg" onClick={handleJoinTeam}>
-                    <UserPlus className="w-4 h-4 mr-2" />
-                    팀 지원하기
+                  <Button className="w-full" size="lg" onClick={handleJoinTeam} disabled={isJoining}>
+                    {isJoining ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        지원하는 중...
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="w-4 h-4 mr-2" />
+                        팀 지원하기
+                      </>
+                    )}
                   </Button>
                   <p className="text-xs text-gray-500 text-center mt-2">팀에 지원하여 함께 프로젝트를 시작해보세요!</p>
                 </CardContent>
               </Card>
             )}
-            {!isLeader && !team.isRecruiting && (
+            
+            {/* 지원 불가 상태 표시 */}
+            {(!team.isRecruiting || !team.allowDirectApply || isTeamFull || isMemberOrLeader) && !isLeader && (
               <Card>
                 <CardContent className="p-4 text-center text-gray-600">
                   <AlertCircle className="w-6 h-6 mx-auto mb-2 text-yellow-500" />
-                  <p>현재 이 팀은 모집 중이 아닙니다.</p>
+                  <p>
+                    {isTeamFull && "이 팀은 이미 인원이 모두 찼습니다."}
+                    {!team.isRecruiting && "이 팀은 현재 모집 중이 아닙니다."}
+                    {!team.allowDirectApply && "이 팀은 직접 지원이 허용되지 않습니다."}
+                    {isMemberOrLeader && "이미 이 팀의 멤버입니다."}
+                  </p>
                 </CardContent>
               </Card>
             )}
+
           </div>
         </div>
       </div>

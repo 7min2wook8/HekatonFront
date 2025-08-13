@@ -811,7 +811,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
     getMyTeams: function (): Promise<{ success: boolean; message: string; data: TeamDatas[] }> {
        try {
         //호출 코드 수정해야함(컨트롤러에서 구현되면 바꿔야함 0812)
-        const response = fetch(`${API_GATEWAY_URL}/api/teams`, {
+        const response = fetch(`${API_GATEWAY_URL}/api/mypage/teamservice/teams`, {
           method: 'GET',
           credentials: 'include' // JWT 쿠키 포함
         });
@@ -820,30 +820,33 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
             const msg = await res.text()
             return { success: false, message: msg || "팀 목록을 불러오지 못했습니다.", data: [] }
           }
-          const data = await res.json()          
+          const data = await res.json() 
           
-          const teams: TeamDatas[] = data.content.map((team: TeamDatas) => ({
+          
+          console.log(data)
+           const teams: TeamDatas[] = (Array.isArray(data) ? data : data.content || []).map((team: TeamDatas) => ({
 
-            id: team.id,
-            name: team.name,
-            description: team.description,
-            leaderId: team.leaderId,
-            contestId: team.contestId,
-            isRecruiting: team.isRecruiting,
-            isPublic: team.isPublic,
-            maxMembers: team.maxMembers,
-            createdAt: new Date(team.createdAt),
-            updatedAt: new Date(team.updatedAt),
-            allowDirectApply: team.allowDirectApply,
-            categoryIds: team.categoryIds || [],
-            contactInfo: team.contactInfo || "",
-            contactMethod: team.contactMethod || "",
-            createdByUserId: team.createdByUserId,
-            location: team.location || "",
-            neededRoles: team.neededRoles || [],
-            requirements: team.requirements || [],
-            skills: team.skills || []
-          }))
+             id: team.id,
+             name: team.name,
+             description: team.description,
+             leaderId: team.leaderId,
+             contestId: team.contestId,
+             isRecruiting: team.isRecruiting,
+             isPublic: team.isPublic,
+             maxMembers: team.maxMembers,
+             createdAt: new Date(team.createdAt),
+             updatedAt: new Date(team.updatedAt),
+             allowDirectApply: team.allowDirectApply,
+             categoryIds: team.categoryIds || [],
+             contactInfo: team.contactInfo || "",
+             contactMethod: team.contactMethod || "",
+             createdByUserId: team.createdByUserId,
+             location: team.location || "",
+             neededRoles: team.neededRoles || [],
+             requirements: team.requirements || "",
+             skills: team.skills || []
+
+           }))
           
           return { success: true, message: "팀 목록을 성공적으로 불러왔습니다.", data: teams }
         })
@@ -873,7 +876,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
           }
           const data = await res.json()         
 
-          return { success: true, message: "신청한 팀 목록을 성공적으로 불러왔습니다.", data: [] }
+          return { success: true, message: "신청한 팀 목록을 성공적으로 불러왔습니다.", data: data }
         })
       } catch (error) {
         console.error("신청한 팀 목록 불러오기 오류:", error)

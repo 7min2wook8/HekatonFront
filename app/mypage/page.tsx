@@ -80,7 +80,7 @@ function MyPageContent() {
 
       const data: Invitation[] = await response.json()
       setReceivedInvitations(data)
-      console.log("초대장 목록 불러오기 성공")
+      //console.log("초대장 목록 불러오기 성공")
     } catch (error: any) {
       console.error("초대장 목록 불러오기 오류:", error)
       setInvitationsError(error.message)
@@ -99,7 +99,7 @@ function MyPageContent() {
     //프로필 데이터 일부 불러오기
     const profie = await viewProfile()
     if (profie.success) {
-      console.log(profie)
+      //console.log(profie)
       setProfileData(profie.profile)
     }
   }
@@ -107,9 +107,7 @@ function MyPageContent() {
   //처음 시작시 한 번 호출
   useEffect(() => {
     //프로필 데이터 일부 불러오기
-    getProfileData()
-    fetchInvitations()
-    fetchParticipatingTeams()
+    getProfileData()   
   }, [])
 
   useEffect(() => {
@@ -120,7 +118,7 @@ function MyPageContent() {
       setFavoritesError(null)
 
       try {
-        const response = await fetch(`${API_GATEWAY_URL}/api/mypage/favorites`, {
+        const response = await fetch(`${API_GATEWAY_URL}/api/mypage/contest/favorites`, {
           method: "GET",
           credentials: "include",
         })
@@ -165,7 +163,7 @@ function MyPageContent() {
     }
 
     try {
-      console.log("신청한 팀 목록 조회 검색")
+      //console.log("신청한 팀 목록 조회 검색")
       const teams = await getAppliedTeams()
 
       if (!teams) {
@@ -173,7 +171,7 @@ function MyPageContent() {
         setParticipatingTeams([])
         return
       }
-
+      //console.log(teams)
       // 참여 중인 팀 목록 필터링
       const userParticipatingTeams = Array.isArray(teams.data) ? teams.data : []
 

@@ -422,7 +422,7 @@ export default function TeamsPage() {
                           <MessageSquare className="w-4 h-4 mr-1" />
                           연락하기
                         </Button>
-                        <Link href={`/individuals/${person.userId}`} className="flex-1">
+                        <Link href={`/profile/${person.userId}`} className="flex-1">
                           <Button variant="outline" size="sm" className="w-full">
                             <Eye className="w-4 h-4 mr-1" />
                             프로필

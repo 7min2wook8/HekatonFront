@@ -41,6 +41,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { InviteMemberModal } from "./modal/InviteMemberModal";
+import {AUTH_SERVER_URL, API_GATEWAY_URL} from "@/src/config"
 
 interface Team {
   id: string;
@@ -111,8 +112,9 @@ function TeamDetailPageContent() {
   const [isJoining, setIsJoining] = useState(false); // 💡 추가: 팀 지원 로딩 상태
   const [error, setError] = useState<string | null>(null);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  
 
-  const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8080";
+  //const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8080";
 
   const fetchTeamData = useCallback(async () => {
     if (!teamId) {
@@ -346,7 +348,7 @@ function TeamDetailPageContent() {
     try {
       // 💡 백엔드 API 호출: 팀 지원 신청
       // (이전에 저장된 ApplicationsController의 API 엔드포인트와 연결)
-      const response = await fetch(`${API_GATEWAY_URL}/api/teams/${team.id}/applyapplications`, {
+      const response = await fetch(`${API_GATEWAY_URL}/api/applications/${team.id}/applyapplications`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

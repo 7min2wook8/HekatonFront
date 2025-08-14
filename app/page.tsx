@@ -9,33 +9,7 @@ import Header from "@/components/header"
 import ChatWidget from "@/components/chat-widget"
 import Footer from "@/components/footer"
 import Link from "next/link"
-
-const heroPosters = [
-  {
-    id: 1,
-    title: "2025 대한민국 디자인 공모전",
-    subtitle: "창의적인 디자인으로 미래를 그려보세요",
-    image: "/placeholder.svg?height=600&width=1200",
-    deadline: "2025-03-15",
-    prize: "총 상금 1억원",
-  },
-  {
-    id: 2,
-    title: "AI 혁신 아이디어 공모전",
-    subtitle: "인공지능으로 세상을 바꿀 아이디어를 찾습니다",
-    image: "/placeholder.svg?height=600&width=1200",
-    deadline: "2025-04-20",
-    prize: "총 상금 5천만원",
-  },
-  {
-    id: 3,
-    title: "환경보호 캠페인 공모전",
-    subtitle: "지구를 지키는 창의적인 캠페인을 제안해주세요",
-    image: "/placeholder.svg?height=600&width=1200",
-    deadline: "2025-05-10",
-    prize: "총 상금 3천만원",
-  },
-]
+import { useContest, Contest } from "@/contexts/auth-context"
 
 const contests = [
   {
@@ -123,10 +97,15 @@ const regions = [
 ]
 
 export default function HomePage() {
+
   const [currentSlide, setCurrentSlide] = useState(0)
   const [selectedRegion, setSelectedRegion] = useState("전체")  
  
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+
+  const {getAllContests }= useContest()
+  const [heroPosters, setHeroPosters] = useState<Contest[]>([]);
+  const [isLoading, setIsLoading] = useState(true)
 
   // 타이머를 시작하는 함수
   const startTimer = () => {
@@ -136,12 +115,47 @@ export default function HomePage() {
     }, 5000)
   }
 
+  const allContests = async () =>{
+    setIsLoading(true)
+    try {
+      const result = await getAllContests();
+      if(result.success){
+        
+        setHeroPosters(result.contests ?? []);
+      }
+    } catch (error) {
+      console.log(error)
+    }finally{
+      setIsLoading(false)
+    }
+    
+  }
+
   useEffect(() => {
+    allContests()
+  }, [])
+
+  useEffect(() => {
+
     startTimer()
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
     }
+
   }, [])
+
+
+
+  useEffect(() => {
+  if (heroPosters.length > 0) {
+    startTimer()
+  }
+  return () => {
+    if (timerRef.current) clearInterval(timerRef.current)
+  }
+}, [heroPosters])
+
+
 
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % heroPosters.length)
@@ -164,7 +178,11 @@ export default function HomePage() {
       {/* Hero Section - 대형 포스터 슬라이드 */}
       <section className="relative h-[600px] overflow-hidden">
         <div className="relative w-full h-full">
-          {heroPosters.map((poster, index) => (
+          {
+           isLoading ? (
+              <p>대회 포스터를 불러오는 중...</p>
+            )
+             : (heroPosters.map((poster, index) => (
             <div
               key={poster.id}
               className={`absolute inset-0 transition-transform duration-500 ease-in-out ${
@@ -177,20 +195,20 @@ export default function HomePage() {
             >
               <div
                 className="w-full h-full bg-cover bg-center relative"
-                style={{ backgroundImage: `url(${poster.image})` }}
+                style={{ backgroundImage: `url(${poster.imageUrl})` }}
               >
                 <div className="absolute inset-0 bg-black bg-opacity-40" />
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="text-center text-white max-w-4xl px-4">
                     <h1 className="text-5xl md:text-7xl font-bold mb-4">{poster.title}</h1>
-                    <p className="text-xl md:text-2xl mb-6">{poster.subtitle}</p>
+                    <p className="text-xl md:text-2xl mb-6">{poster.description}</p>
                     <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-8">
                       <Badge variant="secondary" className="text-lg px-4 py-2">
                         <Clock className="w-4 h-4 mr-2" />
-                        마감: {poster.deadline}
+                        마감: {poster.endDate}
                       </Badge>
                       <Badge variant="secondary" className="text-lg px-4 py-2">
-                        {poster.prize}
+                        {poster.prizeDescription}
                       </Badge>
                     </div>
                     <Button size="lg" className="text-lg px-8 py-3">
@@ -200,7 +218,7 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
-          ))}
+          )))}
         </div>
 
         {/* 슬라이드 컨트롤 */}
@@ -219,7 +237,7 @@ export default function HomePage() {
 
         {/* 슬라이드 인디케이터 */}
         <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-          {heroPosters.map((_, index) => (
+          {heroPosters?.map((_, index) => (
             <button
               key={index}
               onClick={() => setCurrentSlide(index)}

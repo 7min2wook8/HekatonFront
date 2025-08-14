@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { KakaoMapProvider } from "@/contexts/kakao-map-context";
-import { AuthProvider, TeamProvider } from "@/contexts/auth-context"
+import { AuthProvider, ContestProvider, TeamProvider } from "@/contexts/auth-context"
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { Toaster } from "@/components/ui/sonner";
@@ -25,13 +25,15 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body className={inter.className}>
-        <TeamProvider>
-          <KakaoMapProvider>
-            <AuthProvider>
-              {children}
-            </AuthProvider>
-          </KakaoMapProvider>
-        </TeamProvider>
+        <ContestProvider>
+          <TeamProvider>
+            <KakaoMapProvider>
+              <AuthProvider>
+                {children}
+              </AuthProvider>
+            </KakaoMapProvider>
+          </TeamProvider>
+        </ContestProvider>
       <Toaster />
         {/* 카카오맵 API 스크립트 로드 */}
         

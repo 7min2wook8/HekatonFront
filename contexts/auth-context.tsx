@@ -5,6 +5,7 @@ import { createContext, SetStateAction, useContext, useEffect, useState, type Re
 import { useRouter } from "next/navigation"
 import { UUID } from "crypto"
 import { User } from "lucide-react"
+import {AUTH_SERVER_URL, API_GATEWAY_URL} from "@/src/config"
 
 
 interface User {
@@ -73,7 +74,65 @@ interface TeamDatas{
   contactInfo: string
   allowDirectApply: boolean
 }
+interface CategoryResponse {
+  id: string;
+  name: string;
+  description: string;
+}
 
+enum ContestStatus{
+  OPEN,          // 모집 중 (마감일까지 여유 있음)
+  CLOSING_SOON,  // 모집 임박 (마감일이 얼마 남지 않음)
+  CLOSED         // 모집 마감 (이미 종료됨)
+}
+
+export interface Contest{
+  id : UUID;
+  title : string ;
+  description : string ;
+  organizer : string ;
+  startDate : string ;
+  endDate : string ;
+  registrationDeadline : string ;
+  prizeDescription : string ;
+  requirements : string ;
+  websiteUrl : string ;
+  imageUrl : string ;
+  isActive : Boolean ;
+  categories : CategoryResponse[] ;
+  createdAt : string ;
+  updatedAt : string ;
+  status : ContestStatus ;
+  organizerEmail : string ;
+  organizerPhone : string ;
+  submissionFormat: string;
+  maxParticipants: number;
+  eligibility: string[];
+  tags: string[];
+  createdByUserId: UUID;
+  regionSi: string;
+  regionGu: string;
+}
+
+interface AuthContextType {
+  user: User | null 
+  isLoading: boolean
+  isAuthenticated: boolean
+  viewProfile: () => Promise<{ success: boolean; message: string; profile: Profile;}>
+  //프로필 데이터를 DB에 저장
+  saveProfile: (profile: Profile) => Promise<{ success: boolean; message: string;}>  
+  getOtherUserProfile :( userId : string ) => Promise<{ success: boolean; otherUserProfile?: Profile | null; message?: string  } | null>
+  getAllUserProfiles: () => Promise<{ success: boolean; message: string; data: Profile[] }>  
+  signUp: (email: string, password: string, username: string, phone: string) => Promise<{ success: boolean; message: string }>
+  login: (email: string, password: string) => Promise<{ success: boolean; message: string }>
+  logout: () => void
+  updateUser: (userData: Partial<User>) => void
+  viewUserSkills : () => Promise<{ success: boolean; message: string; data : UserSkills[] | [] } >
+  getSkills : () => Promise<{ success: boolean; message: string;  data : Skills[]} >
+  getNcsCategory : () => Promise<{success:boolean; message: string}>
+  saveUserSkills: (skills : UserSkills[]) => Promise<{ success: boolean; message: string }>
+  
+}
 interface TeamContextType{
   Teams: TeamDatas[] // 팀 목록
   isLoading: boolean
@@ -107,34 +166,43 @@ interface TeamContextType{
 
 }
 
-interface AuthContextType {
-  user: User | null 
-  isLoading: boolean
-  isAuthenticated: boolean
-  viewProfile: () => Promise<{ success: boolean; message: string; profile: Profile;}>
-  //프로필 데이터를 DB에 저장
-  saveProfile: (profile: Profile) => Promise<{ success: boolean; message: string;}>  
-  getOtherUserProfile :( userId : string ) => Promise<{ success: boolean; otherUserProfile?: Profile | null; message?: string  } | null>
-  getAllUserProfiles: () => Promise<{ success: boolean; message: string; data: Profile[] }>  
-  signUp: (email: string, password: string, username: string, phone: string) => Promise<{ success: boolean; message: string }>
-  login: (email: string, password: string) => Promise<{ success: boolean; message: string }>
-  logout: () => void
-  updateUser: (userData: Partial<User>) => void
-  viewUserSkills : () => Promise<{ success: boolean; message: string; data : UserSkills[] | [] } >
-  getSkills : () => Promise<{ success: boolean; message: string;  data : Skills[]} >
-  getNcsCategory : () => Promise<{success:boolean; message: string}>
-  saveUserSkills: (skills : UserSkills[]) => Promise<{ success: boolean; message: string }>
-  
-}
+interface ContestContextType {  
+  //모든 공모전 데이터 가져옴
+  getAllContests: () => Promise<{ success: boolean; message: string; contests: Contest[] }>
+  //공모전들 중 하나의 데이터 가져옴
+  getContest: (id: UUID) => Promise<{ success: boolean; message: string; contest: Contest | null }>
+  //공모전 데이터 생성
+  setContest: (contest: Contest) => Promise<{ success: boolean; message: string }>
 
+  //공모전 수정
+  updateContest: (id: UUID, contest: Partial<Contest>) => Promise<{ success: boolean; message: string }>
+  //공모전 삭제
+  deleteContest: (id: UUID) => Promise<{ success: boolean; message: string }>
+  //특정 공모전 찾기 : 제목, 설명, 태그 등에 키워드 검색.
+  searchContests: (query: string) => Promise<{ success: boolean; message: string; contests: Contest[] | null }>
+  //공모전 필터: 날짜, 카테고리, 상태(진행중/종료됨) 같은 조건 필터링.
+  filterContests: (filters: Record<string, any>) => Promise<{ success: boolean; message: string; contests: Contest[] | null }>
+  
+  //참가 신청, 참가 취소.
+  joinContest: (contestId: UUID, userId: UUID) => Promise<{ success: boolean; message: string }>
+  leaveContest: (contestId: UUID, userId: UUID) => Promise<{ success: boolean; message: string }>
+  
+  //특정 사용자가 참가 중인 대회 목록 조회.
+  getUserContests: (userId: UUID) => Promise<{ success: boolean; message: string; contests: Contest[] | null}>
+
+}
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
   // 팀 컨텍스트 생성
 const TeamContext = createContext<TeamContextType | undefined>(undefined)
 
-const AUTH_SERVER_URL = 'http://localhost:60000'; // auth-server 직접 호출
-const API_GATEWAY_URL = 'http://localhost:8080'; // api-gateway 호출
+  //컨텐츠 컨텍스트 생성
+const ContentsContext = createContext<ContestContextType | undefined>(undefined);
+
+
+//const AUTH_SERVER_URL = 'http://localhost:60000'; // auth-server 직접 호출
+//const API_GATEWAY_URL = 'http://localhost:8080'; // api-gateway 호출
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)    
@@ -770,7 +838,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
 }
 
-export function TeamProvider({ children }: { children: React.ReactNode }) {
+export function TeamProvider({ children }: { children: ReactNode }) {
 
   const teamContextValue: TeamContextType = {
     Teams: [], // 초기값은 빈 배열로 설정
@@ -899,19 +967,136 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
   )
 }
 
+export function ContestProvider({ children }: { children: ReactNode }) {
 
-export function useAuth() {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider")
-  }
-  return context
-} 
+  //const [contests, setContests] = useState<Contest[]>([])
+  const contentsContextValue: ContestContextType = {
+    // 모든 대회 목록 가져오기
+    getAllContests: async () => {
+      try {
+        const res = await fetch(`${API_GATEWAY_URL}/api/contests/list`)
+        if(res.ok){
+          const data = await res.json()
+          //console.log(data)
+          //setContests(data.contests)
+          return { success: true, message: "대회 목록 불러오기 성공", contests: data.contests }
+        }
+        else
+          return { success: false, message: "대회 목록 불러오기 실패 : " + res.text, contests: [] }
+          
+        
+      } catch (err) {
+        return { success: false, message: "대회 목록 불러오기 실패" + err, contests: [] }
+      }
+    },
 
-export function useTeam() {
-  const context = useContext(TeamContext)
-  if (context === undefined) {
-    throw new Error("useTeam must be used within a TeamProvider")
+    // 단일 대회 조회
+    getContest: async (id : UUID) => {
+      try {
+        
+        const res = await fetch(`${API_GATEWAY_URL}/api/contests/${id}`)
+        if(!res.ok)
+          return { success: false, message: "대회 조회 실패", contest: null }
+        
+        const data = await res.json()
+        return { success: true, message: "대회 조회 성공", contest: data.contest }
+      } catch (err) {
+        return { success: false, message: "대회 조회 실패", contest: null }
+      }
+    },
+
+    // 대회 생성
+    setContest: async (contest) => {
+      try {
+        const res = await fetch("/api/contests", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(contest),
+        })
+        if (!res.ok) throw new Error()
+       
+        return { success: true, message: "대회 생성 성공" }
+      } catch (err) {
+        return { success: false, message: "대회 생성 실패" }
+      }
+    }
+    // 대회 수정
+    ,
+
+    // 대회 수정
+    updateContest: async (id, contest) => {
+      try {
+        const res = await fetch(`/api/contests/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(contest),
+        })
+        if (!res.ok) throw new Error()
+        
+        return { success: true, message: "대회 수정 성공" }
+      } catch (err) {
+        return { success: false, message: "대회 수정 실패" }
+      }
+    }
+    // 대회 삭제
+    ,
+
+    // 대회 삭제
+    deleteContest: async (id) => {
+      try {
+        const res = await fetch(`/api/contests/${id}`, {
+          method: "DELETE",
+        })
+        if (!res.ok) throw new Error()
+
+        return { success: true, message: "대회 삭제 성공" }
+      } catch (err) {
+        return { success: false, message: "대회 삭제 실패" }
+      }
+    },
+    searchContests: function (query: string): Promise<{ success: boolean; message: string; contests: Contest[] }> {
+      throw new Error("Function not implemented.")
+    },
+    filterContests: function (filters: Record<string, any>): Promise<{ success: boolean; message: string; contests: Contest[] }> {
+      throw new Error("Function not implemented.")
+    },
+    joinContest: function (contestId: UUID, userId: UUID): Promise<{ success: boolean; message: string }> {
+      throw new Error("Function not implemented.")
+    },
+    leaveContest: function (contestId: UUID, userId: UUID): Promise<{ success: boolean; message: string }> {
+      throw new Error("Function not implemented.")
+    },
+    getUserContests: function (userId: UUID): Promise<{ success: boolean; message: string; contests: Contest[] }> {
+      throw new Error("Function not implemented.")
+    }
   }
-  return context
+  return (
+    <ContentsContext.Provider value={contentsContextValue}>
+      {children}
+    </ContentsContext.Provider>
+  )
 }
+
+  export function useAuth() {
+    const context = useContext(AuthContext)
+    if (context === undefined) {
+      throw new Error("useAuth must be used within an AuthProvider")
+    }
+    return context
+  } 
+
+  export function useTeam() {
+    const context = useContext(TeamContext)
+    if (context === undefined) {
+      throw new Error("useTeam must be used within a TeamProvider")
+    }
+    return context
+  }
+
+  export function useContest() {
+    const context = useContext(ContentsContext)
+    if (context === undefined) {
+      throw new Error("useContest must be used within a ContestProvider")
+    }
+    return context
+  }

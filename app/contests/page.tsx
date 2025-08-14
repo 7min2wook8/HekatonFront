@@ -12,6 +12,7 @@ import { Search, MapPin, Clock, Users, Plus, Filter } from "lucide-react"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 import RegionFilter from "@/components/region-filter"
+import {AUTH_SERVER_URL, API_GATEWAY_URL} from "@/src/config"
 
 export default function ContestsPage() {
   // 상태 관리
@@ -33,7 +34,7 @@ export default function ContestsPage() {
   const [isRegionModalOpen, setIsRegionModalOpen] = useState(false);
 
   // API URL
-  const API_GATEWAY_URL = 'http://localhost:8080';
+  //const API_GATEWAY_URL = 'http://localhost:8080';
 
   // 카테고리 데이터 호출
   useEffect(() => {

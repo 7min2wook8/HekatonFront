@@ -26,8 +26,8 @@ import Footer from "@/components/footer"
 import ProtectedRoute from "@/components/protected-route"
 import { useAuth, useTeam, type Profile } from "@/contexts/auth-context"
 import { toast } from "sonner"
-
-const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8080"
+import {AUTH_SERVER_URL, API_GATEWAY_URL} from "@/src/config"
+//const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8080"
 
 interface FavoriteContest {
   id: string
@@ -80,7 +80,7 @@ function MyPageContent() {
 
       const data: Invitation[] = await response.json()
       setReceivedInvitations(data)
-      //console.log("초대장 목록 불러오기 성공")
+      
     } catch (error: any) {
       console.error("초대장 목록 불러오기 오류:", error)
       setInvitationsError(error.message)
@@ -310,6 +310,14 @@ function MyPageContent() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card>
             <CardContent className="p-6 text-center">
+              <Heart className="w-8 h-8 text-red-500 mx-auto mb-2" />
+              <div className="text-2xl font-bold text-gray-900">{favoriteContests.length}</div>
+              <div className="text-sm text-gray-600">즐겨찾기한 공모전</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6 text-center">
               <Trophy className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
               <div className="text-2xl font-bold text-gray-900">{participatingTeams.length}</div>
               <div className="text-sm text-gray-600">참여 중인 팀</div>
@@ -324,13 +332,6 @@ function MyPageContent() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className="p-6 text-center">
-              <Users className="w-8 h-8 text-green-500 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-gray-900">{receivedInvitations.length}</div>
-              <div className="text-sm text-gray-600">받은 팀 초대</div>
-            </CardContent>
-          </Card>
         </div>
 
         {/* 즐겨찾기한 공모전 */}
@@ -433,13 +434,16 @@ function MyPageContent() {
                         </div>
 
                         <div className="flex gap-2">
-                          <Button size="sm" className="flex-1">
+                          
+                          <Button onClick={() =>{ window.location.href = `/teams/${team.id}`} } size="sm" className="flex-1">
                             <Eye className="w-4 h-4 mr-1" />
                             상세보기
                           </Button>
-                          <Button size="sm" variant="outline" className="flex-1 bg-transparent">
+                          
+                          <Button onClick={() =>{ window.location.href = `/`} } size="sm" variant="outline" className="flex-1 bg-transparent">
                             <MessageSquare className="w-4 h-4 mr-1" />팀 채팅
                           </Button>
+                          
                         </div>
                       </div>
                     </CardContent>

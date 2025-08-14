@@ -17,7 +17,7 @@ import Header from "@/components/header"
 import Footer from "@/components/footer"
 import ProtectedRoute from "@/components/protected-route"
 import { useAuth } from "@/contexts/auth-context"
-
+import {AUTH_SERVER_URL, API_GATEWAY_URL} from "@/src/config"
 // 백엔드 TeamsResponse DTO에 있는 필드들만을 기반으로 정의
 interface Team {
   id: string;
@@ -85,8 +85,6 @@ function TeamEditContent() {
 
   const [newRole, setNewRole] = useState("");
   const [newSkill, setNewSkill] = useState("");
-
-  const API_GATEWAY_URL = 'http://localhost:8080';
 
   // 1. 팀 데이터 불러오기
   const fetchTeamData = useCallback(async () => {

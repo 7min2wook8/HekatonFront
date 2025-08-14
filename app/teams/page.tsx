@@ -13,7 +13,7 @@ import { Search, Users, MapPin, Calendar, Plus, MessageSquare, Star, UserPlus, C
 import { Profile, Skills, useAuth, UserSkills } from "@/contexts/auth-context"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
-
+import {AUTH_SERVER_URL, API_GATEWAY_URL} from "@/src/config"
 export default function TeamsPage() {
   const [activeTab, setActiveTab] = useState("teams")
   const [searchTerm, setSearchTerm] = useState("")
@@ -34,8 +34,6 @@ export default function TeamsPage() {
   // 사용자 프로필 관련 API 호출 및 현재 사용자 정보 가져오기
   // ⭐️ useAuth 훅에서 로그인한 사용자 정보를 가져옵니다.
   const { getAllUserProfiles, user } = useAuth()
-    
-  const API_GATEWAY_URL = 'http://localhost:8080';
 
   // 팀 정보 가져오기
   useEffect(() => {

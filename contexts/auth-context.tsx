@@ -200,10 +200,6 @@ const TeamContext = createContext<TeamContextType | undefined>(undefined)
   //컨텐츠 컨텍스트 생성
 const ContentsContext = createContext<ContestContextType | undefined>(undefined);
 
-
-//const AUTH_SERVER_URL = 'http://localhost:60000'; // auth-server 직접 호출
-//const API_GATEWAY_URL = 'http://localhost:8080'; // api-gateway 호출
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)    
   const [isLoading, setIsLoading] = useState(true)

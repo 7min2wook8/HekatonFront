@@ -33,6 +33,7 @@ import Header from "@/components/header";
 import Footer from "@/components/footer";
 import ProtectedRoute from "@/components/protected-route";
 import { useAuth } from "@/contexts/auth-context";
+import {AUTH_SERVER_URL, API_GATEWAY_URL} from "@/src/config"
 
 const regions = [
   "서울",
@@ -71,7 +72,6 @@ function ContestEditContent() {
   const searchParams = useSearchParams();
   const contestId = searchParams.get("id");
 
-  const API_GATEWAY_URL = "http://localhost:8080";
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);

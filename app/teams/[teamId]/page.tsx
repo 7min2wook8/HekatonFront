@@ -111,10 +111,7 @@ function TeamDetailPageContent() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isJoining, setIsJoining] = useState(false); // 💡 추가: 팀 지원 로딩 상태
   const [error, setError] = useState<string | null>(null);
-  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-  
-
-  //const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8080";
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);  
 
   const fetchTeamData = useCallback(async () => {
     if (!teamId) {

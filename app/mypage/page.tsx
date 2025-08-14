@@ -27,7 +27,6 @@ import ProtectedRoute from "@/components/protected-route"
 import { useAuth, useTeam, type Profile } from "@/contexts/auth-context"
 import { toast } from "sonner"
 import {AUTH_SERVER_URL, API_GATEWAY_URL} from "@/src/config"
-//const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8080"
 
 interface FavoriteContest {
   id: string

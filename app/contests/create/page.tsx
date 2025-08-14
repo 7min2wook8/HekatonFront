@@ -45,6 +45,8 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { MapPin } from "lucide-react";
+import {AUTH_SERVER_URL, API_GATEWAY_URL} from "@/src/config"
+
 
 const eligibilityOptions = [
   "누구나",
@@ -89,8 +91,6 @@ function ContestCreateContent() {
   } | null>(null);
   const [tempAddress, setTempAddress] = useState(""); // 모달 안에서 선택된 임시 주소
   const [displayAddress, setDisplayAddress] = useState(""); // 최종 확정되어 화면에 표시될 주소
-
-  const API_GATEWAY_URL = "http://localhost:8080";
 
   // 주소 검색 핸들러 (지도 이동 및 임시 주소 업데이트)
   const handleAddressSearch = (address: string) => {

@@ -25,7 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Check, Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth, Profile as AuthProfile } from "@/contexts/auth-context";
-
+import {AUTH_SERVER_URL, API_GATEWAY_URL} from "@/src/config"
 // Profile 타입이 auth-context에서 가져오는 Profile 타입과 다를 수 있으므로 별칭을 사용합니다.
 // 여기서는 `userId`와 `fullName`을 포함하는 타입으로 가정합니다.
 interface Profile {
@@ -57,8 +57,6 @@ interface InviteMemberModalProps {
   onClose: () => void;
   onSuccess: () => void;
 }
-
-const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8080";
 
 export function InviteMemberModal({ teamId, isOpen, onClose, onSuccess }: InviteMemberModalProps) {
   // `useAuth`에서 가져오는 `user` 객체와 `getAllUserProfiles` 함수를 구조 분해 할당으로 가져옵니다.

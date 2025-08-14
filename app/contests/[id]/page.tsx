@@ -43,6 +43,7 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {AUTH_SERVER_URL, API_GATEWAY_URL} from "@/src/config"
 
 export default function ContestDetailPage() {
     const params = useParams();
@@ -51,8 +52,7 @@ export default function ContestDetailPage() {
     const [contest, setContest] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-    const API_GATEWAY_URL = "http://localhost:8080";
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);   
 
     const fetchContestDetails = async () => {
         if (!params.id) {

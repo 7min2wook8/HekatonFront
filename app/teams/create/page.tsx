@@ -18,7 +18,7 @@ import Header from "@/components/header"
 import Footer from "@/components/footer"
 import ProtectedRoute from "@/components/protected-route"
 import { useAuth } from "@/contexts/auth-context"
-
+import {AUTH_SERVER_URL, API_GATEWAY_URL} from "@/src/config"
 const availableRoles = [
   "프론트엔드 개발자",
   "백엔드 개발자",
@@ -74,8 +74,6 @@ function TeamCreateContent() {
 
   const [newRole, setNewRole] = useState("")
   const [newSkill, setNewSkill] = useState("")
-
-  const API_GATEWAY_URL = 'http://localhost:8080'; // 실제 API Gateway URL 또는 백엔드 URL
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

@@ -32,10 +32,7 @@ export default function ContestsPage() {
   const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
   const [isRegionModalOpen, setIsRegionModalOpen] = useState(false);
-
-  // API URL
-  //const API_GATEWAY_URL = 'http://localhost:8080';
-
+  
   // 카테고리 데이터 호출
   useEffect(() => {
     const fetchCategories = async () => {

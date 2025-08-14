@@ -14,7 +14,6 @@ interface User {
   email: string
   phoneNumber: string 
 }
-
 export interface Profile {   
     userId: string 
     fullName : string
@@ -26,7 +25,6 @@ export interface Profile {
     isPublic?: boolean // 프로필 공개 여부
     skills?: UserSkills[] // 사용자의 스킬 정보
 }
-
 export interface UserSkills{
   userId: string
   skillId: number
@@ -35,14 +33,12 @@ export interface UserSkills{
   description: string
   
 }
-
 export interface Skills{  
   id: number
   name : string
   category : string  
   description : string  
 }
-
 export interface NcsCategory{
   id : string
   code : string
@@ -52,8 +48,7 @@ export interface NcsCategory{
   description : string 
   
 }
-
-interface TeamDatas{
+export interface TeamDatas{
   id: UUID
   name: string
   description: string
@@ -74,18 +69,16 @@ interface TeamDatas{
   contactInfo: string
   allowDirectApply: boolean
 }
-interface CategoryResponse {
+export interface CategoryResponse {
   id: string;
   name: string;
   description: string;
 }
-
-enum ContestStatus{
+export enum ContestStatus{
   OPEN,          // 모집 중 (마감일까지 여유 있음)
   CLOSING_SOON,  // 모집 임박 (마감일이 얼마 남지 않음)
   CLOSED         // 모집 마감 (이미 종료됨)
 }
-
 export interface Contest{
   id : UUID;
   title : string ;
@@ -114,6 +107,19 @@ export interface Contest{
   regionGu: string;
 }
 
+export interface Notification {
+  id: UUID;
+  user_id: UUID;
+  title: string;
+  message : string;
+  type : string;
+  reference_id : UUID;
+  reference_type : string;
+  is_read : boolean;
+  created_at : string;
+
+}
+
 interface AuthContextType {
   user: User | null 
   isLoading: boolean
@@ -131,7 +137,6 @@ interface AuthContextType {
   getSkills : () => Promise<{ success: boolean; message: string;  data : Skills[]} >
   getNcsCategory : () => Promise<{success:boolean; message: string}>
   saveUserSkills: (skills : UserSkills[]) => Promise<{ success: boolean; message: string }>
-  
 }
 interface TeamContextType{
   Teams: TeamDatas[] // 팀 목록
@@ -148,9 +153,9 @@ interface TeamContextType{
   //팀 참여 신청
   applyToTeam: (teamId: UUID) => Promise<{ success: boolean; message: string }> 
   //팀 참여 승인
-  approveTeamApplication: (teamId: UUID, userId: UUID) => Promise<{ success: boolean; message: string }>
+  approveTeamApplication: (userId: UUID) => Promise<{ success: boolean; message: string }>
   //팀 참여 거절
-  rejectTeamApplication: (teamId: UUID, userId: UUID) => Promise<{ success: boolean; message: string }>
+  rejectTeamApplication: (userId: UUID) => Promise<{ success: boolean; message: string }>
   //팀 탈퇴
   leaveTeam: (teamId: UUID) => Promise<{ success: boolean; message: string }>
   //팀장 변경
@@ -165,7 +170,6 @@ interface TeamContextType{
   getTeamMembers: (teamId: UUID) => Promise<{ success: boolean; message: string; data: User[] }>
 
 }
-
 interface ContestContextType {  
   //모든 공모전 데이터 가져옴
   getAllContests: () => Promise<{ success: boolean; message: string; contests: Contest[] }>
@@ -191,6 +195,21 @@ interface ContestContextType {
   getUserContests: (userId: UUID) => Promise<{ success: boolean; message: string; contests: Contest[] | null}>
 
 }
+interface NotificationsContextType {  
+  notifications: Notification[]; // 현재 알림 목록
+
+  addNotification: (notification: Omit<Notification, 'id' | 'createdAt' | 'read'>) => void; 
+  // 새 알림 추가 (id, createdAt, read는 내부에서 자동 생성)
+
+  removeNotification: (id: string) => void; 
+  // 알림 개별 삭제
+
+  markAsRead: (id: string) => void; 
+  // 특정 알림 읽음 처리
+
+  clearNotifications: () => void; 
+  // 모든 알림 제거
+}
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
@@ -199,6 +218,9 @@ const TeamContext = createContext<TeamContextType | undefined>(undefined)
 
   //컨텐츠 컨텍스트 생성
 const ContentsContext = createContext<ContestContextType | undefined>(undefined);
+
+  //컨텐츠 컨텍스트 생성
+const NotificationsContext = createContext<NotificationsContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)    
@@ -856,11 +878,52 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     applyToTeam: function (teamId: UUID): Promise<{ success: boolean; message: string }> {
       throw new Error("Function not implemented.")
     },
-    approveTeamApplication: function (teamId: UUID, userId: UUID): Promise<{ success: boolean; message: string }> {
-      throw new Error("Function not implemented.")
+    //지원 받은 팀 승인
+    approveTeamApplication: function (userId: UUID): Promise<{ success: boolean; message: string }> {
+       try {
+        const response = fetch(`${API_GATEWAY_URL}/api/applications/applications/${userId}/approve`, {
+          method: 'PUT',
+          credentials: 'include'       
+        });        
+        return response.then(async (res) => {
+          if (!res.ok) {
+            const msg = await res.text()
+            console.log(msg)
+            return { success: false, message: "승인이 정상적으로 처리되지 않았습니다."}
+          }    
+
+          return { success: true, message: "승인이 정상적으로 처리되었습니다."}
+        })
+      } catch (error) {
+        console.error("승인 처리중 오류:", error)
+        return Promise.resolve({
+          success: false,
+          message: "신청한 팀 목록을 불러오는 중 오류가 발생했습니다."
+        })
+      }
     },
-    rejectTeamApplication: function (teamId: UUID, userId: UUID): Promise<{ success: boolean; message: string }> {
-      throw new Error("Function not implemented.")
+    rejectTeamApplication: function (userId: UUID): Promise<{ success: boolean; message: string }> {
+      try {
+        const response = fetch(`${API_GATEWAY_URL}/api/applications/applications/${userId}/reject`, {
+          method: 'PUT',
+          credentials: 'include'       
+        });        
+        return response.then(async (res) => {
+          if (!res.ok) {
+            const msg = await res.text()
+            console.log(msg)
+            return { success: false, message: "승인이 정상적으로 처리되지 않았습니다."}
+          }    
+
+          return { success: true, message: "승인이 정상적으로 처리되었습니다."}
+        })
+      } catch (error) {
+        console.error("승인 처리중 오류:", error)
+        return Promise.resolve({
+          success: false,
+          message: "신청한 팀 목록을 불러오는 중 오류가 발생했습니다."
+        })
+      }
     },
     leaveTeam: function (teamId: UUID): Promise<{ success: boolean; message: string }> {
       throw new Error("Function not implemented.")
@@ -930,9 +993,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
         const response = fetch(`${API_GATEWAY_URL}/api/teams/users/me/applications`, {
           method: 'GET',
           credentials: 'include'       
-        });
-
-        
+        });        
         return response.then(async (res) => {
           if (!res.ok) {
             const msg = await res.text()
@@ -1073,26 +1134,60 @@ export function ContestProvider({ children }: { children: ReactNode }) {
   )
 }
 
-  export function useAuth() {
-    const context = useContext(AuthContext)
-    if (context === undefined) {
-      throw new Error("useAuth must be used within an AuthProvider")
-    }
-    return context
-  } 
+export function NotificationsProvider({ children }: { children: ReactNode }) {
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  export function useTeam() {
-    const context = useContext(TeamContext)
-    if (context === undefined) {
-      throw new Error("useTeam must be used within a TeamProvider")
+  const notificationsContextValue: NotificationsContextType = {
+    notifications: [],
+    addNotification: function (notification: Omit<Notification, "id" | "createdAt" | "read">) {
+      throw new Error("Function not implemented.")
+    },
+    removeNotification: function (id: string): void {
+      throw new Error("Function not implemented.")
+    },
+    markAsRead: function (id: string): void {
+      throw new Error("Function not implemented.")
+    },
+    clearNotifications: function (): void {
+      throw new Error("Function not implemented.")
     }
-    return context
   }
+  return (
+    <NotificationsContext.Provider value={notificationsContextValue}>
+      {children}
+    </NotificationsContext.Provider>
+  )
+}
 
-  export function useContest() {
-    const context = useContext(ContentsContext)
-    if (context === undefined) {
-      throw new Error("useContest must be used within a ContestProvider")
-    }
-    return context
+export function useAuth() {
+  const context = useContext(AuthContext)
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider")
   }
+  return context
+} 
+
+export function useTeam() {
+  const context = useContext(TeamContext)
+  if (context === undefined) {
+    throw new Error("useTeam must be used within a TeamProvider")
+  }
+  return context
+}
+
+export function useContest() {
+  const context = useContext(ContentsContext)
+  if (context === undefined) {
+    throw new Error("useContest must be used within a ContestProvider")
+  }
+  return context
+}
+
+//알람 관련 Cotext
+export function useNotifications() {
+  const context = useContext(NotificationsContext)
+  if (context === undefined) {
+    throw new Error("useContest must be used within a ContestProvider")
+  }
+  return context
+}

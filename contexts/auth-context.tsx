@@ -197,14 +197,12 @@ interface ContestContextType {
 }
 interface NotificationsContextType {  
   notifications: Notification[]; // 현재 알림 목록
+  getNotification: () => Promise<{ success: boolean; message: string; notifications: Notification[] }> ;
 
-  addNotification: (notification: Omit<Notification, 'id' | 'createdAt' | 'read'>) => void; 
-  // 새 알림 추가 (id, createdAt, read는 내부에서 자동 생성)
-
-  removeNotification: (id: string) => void; 
+  removeNotification:(id: UUID) => Promise<{ success: boolean; message: string;}> ;
   // 알림 개별 삭제
 
-  markAsRead: (id: string) => void; 
+  markAsRead: (id: UUID) => Promise<{ success: boolean; message: string;}> ; 
   // 특정 알림 읽음 처리
 
   clearNotifications: () => void; 
@@ -1134,18 +1132,20 @@ export function ContestProvider({ children }: { children: ReactNode }) {
   )
 }
 
-export function NotificationsProvider({ children }: { children: ReactNode }) {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+export function NotificationsProvider({ children }: { children: ReactNode }) { 
 
   const notificationsContextValue: NotificationsContextType = {
     notifications: [],
-    addNotification: function (notification: Omit<Notification, "id" | "createdAt" | "read">) {
+    
+    getNotification : async () => {
+
+
+      return { success: false, message: "알림 기능이 아직 구현되지 않았습니다.", notifications: [] };
+    },
+    removeNotification: function (id: UUID): Promise<{ success: boolean; message: string }> {
       throw new Error("Function not implemented.")
     },
-    removeNotification: function (id: string): void {
-      throw new Error("Function not implemented.")
-    },
-    markAsRead: function (id: string): void {
+    markAsRead: function (id: UUID): Promise<{ success: boolean; message: string }> {
       throw new Error("Function not implemented.")
     },
     clearNotifications: function (): void {

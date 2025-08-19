@@ -9,64 +9,64 @@ import Header from "@/components/header"
 import ChatWidget from "@/components/chat-widget"
 import Footer from "@/components/footer"
 import Link from "next/link"
-import { useContest, Contest } from "@/contexts/auth-context"
+import { useContest, Contest } from "@/contexts/contest-context"
 
-const contests = [
-  {
-    id: 1,
-    title: "2025 스타트업 아이디어 공모전",
-    category: "창업",
-    location: "서울",
-    deadline: "2025-02-28",
-    image: "/placeholder.svg?height=200&width=300",
-    participants: 156,
-  },
-  {
-    id: 2,
-    title: "대학생 광고 크리에이티브 공모전",
-    category: "광고",
-    location: "부산",
-    deadline: "2025-03-05",
-    image: "/placeholder.svg?height=200&width=300",
-    participants: 89,
-  },
-  {
-    id: 3,
-    title: "모바일 앱 개발 공모전",
-    category: "IT",
-    location: "대구",
-    deadline: "2025-03-12",
-    image: "/placeholder.svg?height=200&width=300",
-    participants: 234,
-  },
-  {
-    id: 4,
-    title: "사회혁신 아이디어 공모전",
-    category: "사회",
-    location: "인천",
-    deadline: "2025-03-18",
-    image: "/placeholder.svg?height=200&width=300",
-    participants: 67,
-  },
-  {
-    id: 5,
-    title: "친환경 제품 디자인 공모전",
-    category: "디자인",
-    location: "광주",
-    deadline: "2025-03-25",
-    image: "/placeholder.svg?height=200&width=300",
-    participants: 123,
-  },
-  {
-    id: 6,
-    title: "청년 정책 제안 공모전",
-    category: "정책",
-    location: "대전",
-    deadline: "2025-04-01",
-    image: "/placeholder.svg?height=200&width=300",
-    participants: 45,
-  },
-]
+// const contests = [
+//   {
+//     id: 1,
+//     title: "2025 스타트업 아이디어 공모전",
+//     category: "창업",
+//     location: "서울",
+//     deadline: "2025-02-28",
+//     image: "/placeholder.svg?height=200&width=300",
+//     participants: 156,
+//   },
+//   {
+//     id: 2,
+//     title: "대학생 광고 크리에이티브 공모전",
+//     category: "광고",
+//     location: "부산",
+//     deadline: "2025-03-05",
+//     image: "/placeholder.svg?height=200&width=300",
+//     participants: 89,
+//   },
+//   {
+//     id: 3,
+//     title: "모바일 앱 개발 공모전",
+//     category: "IT",
+//     location: "대구",
+//     deadline: "2025-03-12",
+//     image: "/placeholder.svg?height=200&width=300",
+//     participants: 234,
+//   },
+//   {
+//     id: 4,
+//     title: "사회혁신 아이디어 공모전",
+//     category: "사회",
+//     location: "인천",
+//     deadline: "2025-03-18",
+//     image: "/placeholder.svg?height=200&width=300",
+//     participants: 67,
+//   },
+//   {
+//     id: 5,
+//     title: "친환경 제품 디자인 공모전",
+//     category: "디자인",
+//     location: "광주",
+//     deadline: "2025-03-25",
+//     image: "/placeholder.svg?height=200&width=300",
+//     participants: 123,
+//   },
+//   {
+//     id: 6,
+//     title: "청년 정책 제안 공모전",
+//     category: "정책",
+//     location: "대전",
+//     deadline: "2025-04-01",
+//     image: "/placeholder.svg?height=200&width=300",
+//     participants: 45,
+//   },
+// ]
 
 const teamPosts = [
   { id: 4, category: "일반", title: "다람쥐헌쳇바퀴에 타고파", author: "asd", date: "2025-01-02", views: 15 },
@@ -103,9 +103,11 @@ export default function HomePage() {
  
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
-  const {getAllContests }= useContest()
+  const { getAllContests, filterContests }= useContest()
   const [heroPosters, setHeroPosters] = useState<Contest[]>([]);
+  const [contests, setContests] = useState<Contest[]>([]);
   const [isLoading, setIsLoading] = useState(true)
+  const [isFiltering, setIsFiltering] = useState(false)
 
   // 타이머를 시작하는 함수
   const startTimer = () => {
@@ -121,18 +123,23 @@ export default function HomePage() {
       const result = await getAllContests();
       if(result.success){
         
-        setHeroPosters(result.contests ?? []);
+        setHeroPosters(result.contests);
+        setContests(result.contests);
+        console.log(result.contests)
+
       }
     } catch (error) {
       console.log(error)
     }finally{
       setIsLoading(false)
+      
     }
     
   }
 
   useEffect(() => {
     allContests()
+    
   }, [])
 
   useEffect(() => {
@@ -148,6 +155,7 @@ export default function HomePage() {
 
   useEffect(() => {
   if (heroPosters.length > 0) {
+    
     startTimer()
   }
   return () => {
@@ -168,8 +176,30 @@ export default function HomePage() {
   }
 
 
-  const filteredContests =
-    selectedRegion === "전체" ? contests : contests.filter((contest) => contest.location === selectedRegion)
+  // const filteredContests =
+  //   selectedRegion === "전체" ? contests : contests.filter((contest) => contest.regionSi === selectedRegion)
+
+    // 지역 필터 버튼 클릭 시 서버에 데이터 요청
+  const handleRegionFilter = async (region: string) => {
+    setSelectedRegion(region)
+    setIsFiltering(true)
+    try {
+      const result =
+        region === "전체"
+          ? await getAllContests()
+          : await filterContests({ regionSi: region })
+
+      if (result.success && result.contests) {
+        setContests(result.contests)
+      } else {
+        console.error("공모전 필터링 실패:", result.message)
+        setContests([]) // 실패 시 목록을 비웁니다.
+      }
+    } catch (error) {
+      console.error("공모전 필터링 중 오류 발생:", error)
+    }
+    setIsFiltering(false)
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -195,7 +225,7 @@ export default function HomePage() {
             >
               <div
                 className="w-full h-full bg-cover bg-center relative"
-                style={{ backgroundImage: `url(${poster.imageUrl})` }}
+                style={{ backgroundImage: `url(${poster.imageUrl || "/placeholder.svg" })` }}
               >
                 <div className="absolute inset-0 bg-black bg-opacity-40" />
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -211,9 +241,11 @@ export default function HomePage() {
                         {poster.prizeDescription}
                       </Badge>
                     </div>
-                    <Button size="lg" className="text-lg px-8 py-3">
-                      공모전 탐색하기
-                    </Button>
+                    <Link href={`/contests/${poster.id}`}>
+                      <Button size="lg" className="text-lg px-8 py-3">
+                        공모전 탐색하기
+                      </Button>
+                    </Link>
                   </div>
                 </div>
               </div>
@@ -254,7 +286,11 @@ export default function HomePage() {
         <section className="mb-16">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-3xl font-bold">마감이 임박한 공모전</h2>
-            <Button variant="outline">전체 보기</Button>
+
+            <Link href="/contests" className="flex items-center gap-2">
+              <Button variant="outline">전체 보기</Button>
+            </Link>
+           
           </div>
 
           {/* 지역 필터링 버튼 */}
@@ -264,7 +300,7 @@ export default function HomePage() {
                 key={region}
                 variant={selectedRegion === region ? "default" : "outline"}
                 size="sm"
-                onClick={() => setSelectedRegion(region)}
+                onClick={() => handleRegionFilter(region)}
               >
                 {region}
               </Button>
@@ -273,39 +309,43 @@ export default function HomePage() {
 
           {/* 공모전 카드 그리드 */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredContests.map((contest) => (
-              <Link key={contest.id} href={`/contests/${contest.id}`}>
-                <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                  <div className="relative">
-                    <img
-                      src={contest.image || "/placeholder.svg"}
-                      alt={contest.title}
-                      className="w-full h-48 object-cover rounded-t-lg"
-                    />
-                    <Badge className="absolute top-2 left-2">{contest.category}</Badge>
-                  </div>
-                  <CardHeader>
-                    <CardTitle className="text-lg line-clamp-2">{contest.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
-                      <div className="flex items-center">
-                        <MapPin className="w-4 h-4 mr-1" />
-                        {contest.location}
-                      </div>
-                      <div className="flex items-center">
-                        <Users className="w-4 h-4 mr-1" />
-                        {contest.participants}명 참여
-                      </div>
+            {isFiltering ? (
+              <p className="col-span-full text-center py-8">공모전을 불러오는 중...</p>
+            ) : (
+              contests.map((contest) => (
+                <Link key={contest.id} href={`/contests/${contest.id}`}>
+                  <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                    <div className="relative">
+                      <img
+                        src={contest.imageUrl || "/placeholder.svg"}
+                        alt={contest.title}
+                        className="w-full h-48 object-cover rounded-t-lg"
+                      />
+                      <Badge className="absolute top-2 left-2">{contest.categories.map((category) => category.name).join(", ")}</Badge>
                     </div>
-                    <div className="flex items-center text-sm text-red-600">
-                      <Clock className="w-4 h-4 mr-1" />
-                      마감: {contest.deadline}
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
+                    <CardHeader>
+                      <CardTitle className="text-lg line-clamp-2">{contest.title}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+                        <div className="flex items-center">
+                          <MapPin className="w-4 h-4 mr-1" />
+                          {contest.regionSi} {contest.regionGu}
+                        </div>
+                        <div className="flex items-center">
+                          <Users className="w-4 h-4 mr-1" />
+                          {contest.maxParticipants}명 참여
+                        </div>
+                      </div>
+                      <div className="flex items-center text-sm text-red-600">
+                        <Clock className="w-4 h-4 mr-1" />
+                        마감: {contest.endDate}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))
+            )}
           </div>
         </section>
 

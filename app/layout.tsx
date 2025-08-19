@@ -3,7 +3,9 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { KakaoMapProvider } from "@/contexts/kakao-map-context";
-import { AuthProvider, ContestProvider, TeamProvider } from "@/contexts/auth-context"
+import { AuthProvider } from "@/contexts/auth-context"
+import { ContestProvider } from "@/contexts/contest-context"
+import { TeamProvider } from "@/contexts/team-context"
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { Toaster } from "@/components/ui/sonner";

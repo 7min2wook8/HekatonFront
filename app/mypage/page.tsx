@@ -24,7 +24,8 @@ import {
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 import ProtectedRoute from "@/components/protected-route"
-import { useAuth, useTeam, type Profile } from "@/contexts/auth-context"
+import { useAuth, type Profile } from "@/contexts/auth-context"
+import { useTeam } from "@/contexts/team-context"
 import { toast } from "sonner"
 import {AUTH_SERVER_URL, API_GATEWAY_URL} from "@/src/config"
 

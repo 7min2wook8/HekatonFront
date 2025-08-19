@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -39,13 +39,16 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogTitle,
+  DialogTitle,  
   DialogTrigger,
   DialogFooter,
   DialogClose,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { MapPin } from "lucide-react";
 import {AUTH_SERVER_URL, API_GATEWAY_URL} from "@/src/config"
+import { useKakaoMap } from "@/contexts/kakao-map-context";
+import { Description } from "@radix-ui/react-dialog";
 
 
 const eligibilityOptions = [
@@ -71,6 +74,7 @@ const parseAddress = (
 };
 
 function ContestCreateContent() {
+  const { isLoaded } = useKakaoMap();
   const { user } = useAuth();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -92,12 +96,23 @@ function ContestCreateContent() {
   const [tempAddress, setTempAddress] = useState(""); // 모달 안에서 선택된 임시 주소
   const [displayAddress, setDisplayAddress] = useState(""); // 최종 확정되어 화면에 표시될 주소
 
+
+  
+  const geocoderRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (isLoaded && !geocoderRef.current) {
+      window.kakao.maps.load(() => {
+        geocoderRef.current = new window.kakao.maps.services.Geocoder();
+      });
+    }
+  }, [isLoaded]);
+
   // 주소 검색 핸들러 (지도 이동 및 임시 주소 업데이트)
   const handleAddressSearch = (address: string) => {
-    if (!window.kakao || !address) return;
+    if (!geocoderRef.current || !address) return;
 
-    const geocoder = new window.kakao.maps.services.Geocoder();
-    geocoder.addressSearch(address, (result: any, status: any) => {
+    geocoderRef.current.addressSearch(address, (result: any, status: any) => {
       if (status === window.kakao.maps.services.Status.OK) {
         const newCoords = {
           lat: parseFloat(result[0].y),
@@ -111,12 +126,17 @@ function ContestCreateContent() {
     });
   };
 
-  // 지도 클릭 핸들러 (클릭 위치의 주소를 임시 주소로 업데이트)
-  const handleMapClick = (address: string) => {
-    setTempAddress(address);
-    // 주소로 좌표를 다시 검색하여 마커 위치 업데이트
-    const geocoder = new window.kakao.maps.services.Geocoder();
-    geocoder.addressSearch(address, (result: any, status: any) => {
+  // 지도에서 주소가 선택되었을 때 호출되는 함수
+  const handleAddressSelect = (address: string) => {
+    if (!geocoderRef.current) {
+      console.error("Geocoder not initialized");
+      return;
+    }
+
+    setTempAddress(address); // 임시 주소 상태 업데이트
+
+    // 주소로 좌표를 검색하여 지도 중심과 마커를 업데이트
+    geocoderRef.current.addressSearch(address, (result: any, status: any) => {
       if (status === window.kakao.maps.services.Status.OK) {
         const newCoords = {
           lat: parseFloat(result[0].y),
@@ -125,14 +145,18 @@ function ContestCreateContent() {
         setMapCenter(newCoords);
         setMarker({ ...newCoords, title: address });
       }
-      console.log("선택된 지역 이름: ", address);
     });
   };
+
 
   // 모달에서 "확인" 버튼 클릭 시 실행될 함수
   const handleConfirmAddress = () => {
     setDisplayAddress(tempAddress); // 화면에 표시할 주소 업데이트
-    const { regionSi, regionGu } = parseAddress(tempAddress);
+    const { regionSi, regionGu } = parseAddress(tempAddress) || {
+      regionSi: "",
+      regionGu: "",
+    };
+    
     const updatedFormData = {
       ...formData,
       regionSi: regionSi, // 1차 지역 정보 업데이트
@@ -456,6 +480,7 @@ function ContestCreateContent() {
                           <DialogContent className="max-w-3xl h-auto">
                             <DialogHeader>
                               <DialogTitle>지도에서 지역 선택</DialogTitle>
+                              <DialogDescription>지도에서 지역을 선택해주세요.</DialogDescription>
                             </DialogHeader>
                             <div className="space-y-4 py-4">
                               <div className="flex gap-2">
@@ -471,7 +496,7 @@ function ContestCreateContent() {
                                   latitude={mapCenter.lat}
                                   longitude={mapCenter.lng}
                                   markers={marker ? [marker] : []}
-                                  onAddressSelect={handleMapClick}
+                                  onAddressSelect={handleAddressSelect}
                                 />
                               </div>
                               {tempAddress && (
@@ -869,4 +894,7 @@ export default function ContestCreatePage() {
       <ContestCreateContent />
     </ProtectedRoute>
   );
+}
+function onAddressSelect(newAddress: any) {
+  throw new Error("Function not implemented.");
 }

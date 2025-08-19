@@ -32,6 +32,7 @@ import {
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { useAuth } from "@/contexts/auth-context";
+import { Contest } from "@/contexts/contest-context"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -49,7 +50,7 @@ export default function ContestDetailPage() {
     const params = useParams();
     const router = useRouter();
     const { user, isAuthenticated } = useAuth();
-    const [contest, setContest] = useState<any>(null);
+    const [contest, setContest] = useState<any>();
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);   

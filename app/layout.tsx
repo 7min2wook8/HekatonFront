@@ -4,12 +4,14 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { KakaoMapProvider } from "@/contexts/kakao-map-context";
 import { AuthProvider } from "@/contexts/auth-context"
+import { AppStatusProvider } from "@/contexts/app-status-context"
 import { ContestProvider } from "@/contexts/contest-context"
 import { TeamProvider } from "@/contexts/team-context"
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { Toaster } from "@/components/ui/sonner";
 import Script from "next/script";
+import AppContent from "@/components/app-content"
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -27,15 +29,17 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body className={inter.className}>
-        <ContestProvider>
-          <TeamProvider>
-            <KakaoMapProvider>
-              <AuthProvider>
-                {children}
-              </AuthProvider>
-            </KakaoMapProvider>
-          </TeamProvider>
-        </ContestProvider>
+        <AppStatusProvider>
+          <ContestProvider>
+            <TeamProvider>
+              <KakaoMapProvider>
+                <AuthProvider>
+                  <AppContent>{children}</AppContent>
+                </AuthProvider>
+              </KakaoMapProvider>
+            </TeamProvider>
+          </ContestProvider>
+        </AppStatusProvider>
       <Toaster />
         {/* 카카오맵 API 스크립트 로드 */}
         

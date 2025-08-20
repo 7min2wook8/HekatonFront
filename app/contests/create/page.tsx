@@ -95,36 +95,48 @@ function ContestCreateContent() {
   } | null>(null);
   const [tempAddress, setTempAddress] = useState(""); // 모달 안에서 선택된 임시 주소
   const [displayAddress, setDisplayAddress] = useState(""); // 최종 확정되어 화면에 표시될 주소
+  const [searchAddress, setSearchAddress] = useState(""); // 지도 검색용 주소 상태
+  const [searchResults, setSearchResults] = useState<any[]>([]); // 키워드 검색 결과
+  const [isSearching, setIsSearching] = useState(false); // 키워드 검색 로딩 상태
 
 
   
   const geocoderRef = useRef<any>(null);
+  const placesRef = useRef<any>(null); // 장소 검색 객체
 
   useEffect(() => {
-    if (isLoaded && !geocoderRef.current) {
+    if (isLoaded) {
       window.kakao.maps.load(() => {
         geocoderRef.current = new window.kakao.maps.services.Geocoder();
+        placesRef.current = new window.kakao.maps.services.Places();
       });
     }
   }, [isLoaded]);
 
-  // 주소 검색 핸들러 (지도 이동 및 임시 주소 업데이트)
-  const handleAddressSearch = (address: string) => {
-    if (!geocoderRef.current || !address) return;
+  // 키워드로 장소 검색 (디바운싱 적용)
+  useEffect(() => {
+    if (!searchAddress.trim() || !placesRef.current) {
+      setSearchResults([]);
+      return;
+    }
 
-    geocoderRef.current.addressSearch(address, (result: any, status: any) => {
-      if (status === window.kakao.maps.services.Status.OK) {
-        const newCoords = {
-          lat: parseFloat(result[0].y),
-          lng: parseFloat(result[0].x),
-        };
-        const fullAddress = result[0].address_name;
-        setMapCenter(newCoords);
-        setMarker({ ...newCoords, title: fullAddress });
-        setTempAddress(fullAddress); // 검색 결과를 임시 주소로 설정
-      }
-    });
-  };
+    const debounceTimer = setTimeout(() => {
+      setIsSearching(true);
+      placesRef.current.keywordSearch(
+        searchAddress,
+        (data: any, status: any) => {
+          setIsSearching(false);
+          if (status === window.kakao.maps.services.Status.OK) {
+            setSearchResults(data);
+          } else {
+            setSearchResults([]);
+          }
+        }
+      );
+    }, 300); // 300ms 디바운스
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchAddress]);
 
   // 지도에서 주소가 선택되었을 때 호출되는 함수
   const handleAddressSelect = (address: string) => {
@@ -148,9 +160,26 @@ function ContestCreateContent() {
     });
   };
 
+  // 검색 결과에서 장소를 선택했을 때 호출되는 함수
+  const handlePlaceSelect = (place: any) => {
+    const newCoords = {
+      lat: parseFloat(place.y),
+      lng: parseFloat(place.x),
+    };
+    const fullAddress = place.road_address_name || place.address_name;
 
+    setMapCenter(newCoords);
+    setMarker({ ...newCoords, title: fullAddress });
+    setTempAddress(fullAddress);
+    setSearchAddress(fullAddress); // 입력창에 선택한 주소 표시
+    setSearchResults([]); // 검색 결과 목록 숨기기
+  };
+
+  let count = 0;
   // 모달에서 "확인" 버튼 클릭 시 실행될 함수
   const handleConfirmAddress = () => {
+    count++
+    console.log(count)
     setDisplayAddress(tempAddress); // 화면에 표시할 주소 업데이트
     const { regionSi, regionGu } = parseAddress(tempAddress) || {
       regionSi: "",
@@ -258,7 +287,7 @@ function ContestCreateContent() {
       registrationDeadline: formatDateTime(formData.registrationDeadline),
     };
 
-    console.log("제출 전 데이터:", submissionData);
+    //console.log("제출 전 데이터:", submissionData);
 
     try {
       const response = await fetch(`${API_GATEWAY_URL}/api/contests/create`, {
@@ -482,14 +511,38 @@ function ContestCreateContent() {
                               <DialogTitle>지도에서 지역 선택</DialogTitle>
                               <DialogDescription>지도에서 지역을 선택해주세요.</DialogDescription>
                             </DialogHeader>
-                            <div className="space-y-4 py-4">
-                              <div className="flex gap-2">
-                                <Input
-                                  placeholder="주소를 입력하여 위치 검색"
-                                  onBlur={(e) =>
-                                    handleAddressSearch(e.target.value)
-                                  }
-                                />
+                            <div className="py-4 space-y-4">
+                              <div className="relative">
+                                <div className="flex items-center gap-2">
+                                  <Input
+                                    placeholder="건물, 장소, 주소로 검색"
+                                    value={searchAddress}
+                                    onChange={(e) =>
+                                      setSearchAddress(e.target.value)
+                                    }
+                                  />
+                                  {isSearching && (
+                                    <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                                  )}
+                                </div>
+                                {searchResults.length > 0 && (
+                                  <Card className="absolute z-10 w-full mt-1 max-h-60 overflow-y-auto shadow-lg">
+                                    <CardContent className="p-0">
+                                      <ul className="divide-y">
+                                        {searchResults.map((place) => (
+                                          <li
+                                            key={place.id}
+                                            onClick={() => handlePlaceSelect(place)}
+                                            className="p-3 hover:bg-gray-100 rounded-md cursor-pointer"
+                                          >
+                                            <p className="font-semibold text-sm">{place.place_name}</p>
+                                            <p className="text-xs text-gray-500">{place.road_address_name || place.address_name}</p>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </CardContent>
+                                  </Card>
+                                )}
                               </div>
                               <div className="w-full h-[400px] rounded-lg overflow-hidden border">
                                 <KakaoMap

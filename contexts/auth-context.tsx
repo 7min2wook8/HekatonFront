@@ -5,6 +5,7 @@ import { createContext, SetStateAction, useContext, useEffect, useState, type Re
 import { useRouter } from "next/navigation"
 import { UUID } from "crypto"
 import {AUTH_SERVER_URL, API_GATEWAY_URL} from "@/src/config"
+import { useAppStatus } from "./app-status-context"
 
 export interface AuthUser {
   id: string
@@ -53,7 +54,6 @@ interface AuthContextType {
   isLoading: boolean
   isAuthenticated: boolean
   viewProfile: () => Promise<{ success: boolean; message: string; profile: Profile;}>
-  //프로필 데이터를 DB에 저장
   saveProfile: (profile: Profile) => Promise<{ success: boolean; message: string;}>  
   getOtherUserProfile :( userId : string ) => Promise<{ success: boolean; otherUserProfile?: Profile | null; message?: string  } | null>
   getAllUserProfiles: () => Promise<{ success: boolean; message: string; data: Profile[] }>  
@@ -73,6 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)    
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
+  const { setGatewayDown } = useAppStatus()
 
   //컴포넌트 마운트 시 저장된 세션 확인
   useEffect(() => {
@@ -110,8 +111,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           setUser(null);
         }
+        // API 호출이 성공했으므로 게이트웨이가 정상이라고 간주합니다.
+        setGatewayDown(false)
       } catch (err) {
         console.error("세션 확인 실패", err);
+        // fetch 자체가 실패하면 네트워크 오류로 간주합니다.
+        if (err instanceof TypeError) {
+          setGatewayDown(true)
+        }
         setUser(null);
       }
       finally {
@@ -121,7 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     };
 
-  checkSession(); // 앱 최초 실행 시 호출
+    checkSession() // 앱 최초 실행 시 호출
    
   }, [])
 
@@ -226,9 +233,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         return { success: false, message: msg || "이메일 또는 비밀번호가 올바르지 않습니다." }
       }
+      // API 호출이 성공했으므로 게이트웨이가 정상이라고 간주합니다.
+      setGatewayDown(false)
 
     } catch (error) {
-     
+      if (error instanceof TypeError) setGatewayDown(true)
       return { success: false, message: "로그인 중 오류가 발생했습니다." }
     }
     finally{
@@ -265,9 +274,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, message: msg +  "오류가 발생하였습니다." }
 
       }
+      setGatewayDown(false)
 
     } catch (error) {
-      
+      if (error instanceof TypeError) setGatewayDown(true)
       return { success: false, message: "오류가 발생하였습니다." }
     }
     finally{
@@ -305,25 +315,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } 
 
     try {
-      //데이터 요청
-      const response = await fetch(`${API_GATEWAY_URL}/api/users/profiles/me`, {
-                    method: 'GET',
-                    credentials: 'include'
-      });     
-      //데이터가 없으면
-      if (!response.ok) {
+      // 프로필 정보와 스킬 정보를 병렬로 요청
+      const [profileResponse, skillsResponse] = await Promise.all([
+        fetch(`${API_GATEWAY_URL}/api/users/profiles/me`, {
+          method: "GET",
+          credentials: "include",
+        }),
+        fetch(`${API_GATEWAY_URL}/api/users/me/skills`, {
+          method: "GET",
+          credentials: "include",
+        }),
+      ])
+
+      if (!profileResponse.ok) {
         return {
           success: false,
           message: "사용자 정보를 불러오지 못했습니다.",
-          profile : FallbackProfile()       
-        }        
+          profile: FallbackProfile(),
+        }
       }
-      else{
-        
-      const profileData = await response.json()     
-      
-      if (profileData) { 
 
+      const profileData = await profileResponse.json()
+      const skillsData = skillsResponse.ok ? await skillsResponse.json() : []
+
+      if (profileData) { 
         const parsedProfile: Profile = {
           userId: profileData.userId || user.id, // user.id를 기본값으로 사용
           fullName: profileData.fullName || "",
@@ -332,25 +347,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           education: profileData.education || "",
           experience: profileData.experience || "",
           portfolioUrl: profileData.portfolioUrl || "",
-          isPublic: profileData.isPublic !== undefined ? profileData.isPublic : false, // isPublic이 없으면 기본값 false
-        };
-        
+          isPublic: profileData.isPublic !== undefined ? profileData.isPublic : false,
+          skills: skillsData, // 스킬 정보 추가
+        }
+
         return {
           success: true,
-          message: "프로필 불러오기 성공",  
-          profile : parsedProfile                
+          message: "프로필 불러오기 성공",
+          profile: parsedProfile,
         }
-
-      }
-      else{
-          return {
-            success: false,
-            message: "받은 데이터 정보가 없습니다.",  
-            profile : FallbackProfile()               
-          }
+      } else {
+        return {
+          success: false,
+          message: "받은 데이터 정보가 없습니다.",
+          profile: FallbackProfile(),
         }
       }
-
     } catch (error) {
 
       console.error("프로필 불러오기 오류:", error)
@@ -710,4 +722,3 @@ export function useAuth() {
   }
   return context
 } 
-

@@ -125,8 +125,6 @@ export default function HomePage() {
         
         setHeroPosters(result.contests);
         setContests(result.contests);
-        console.log(result.contests)
-
       }
     } catch (error) {
       console.log(error)
@@ -138,30 +136,17 @@ export default function HomePage() {
   }
 
   useEffect(() => {
-    allContests()
-    
-  }, [])
+    allContests();
+  }, []);
 
   useEffect(() => {
-
-    startTimer()
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
+    if (heroPosters.length > 0) {
+      startTimer();
     }
-
-  }, [])
-
-
-
-  useEffect(() => {
-  if (heroPosters.length > 0) {
-    
-    startTimer()
-  }
-  return () => {
-    if (timerRef.current) clearInterval(timerRef.current)
-  }
-}, [heroPosters])
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [heroPosters]);
 
 
 

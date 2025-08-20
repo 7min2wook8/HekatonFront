@@ -24,66 +24,66 @@ function KakaoMap({ latitude, longitude, markers, onAddressSelect }: KakaoMapPro
   const geocoderRef = useRef<any>(null);
   const { isLoaded } = useKakaoMap();
 
+  // 지도 생성 및 기본 설정 (최초 1회 및 좌표 변경 시)
   useEffect(() => {
     if (!isLoaded || !mapContainer.current) return;
 
-    window.kakao.maps.load(() => {
-      if (!mapRef.current) {
-        // 최초 1회만 지도 생성
-        const mapOption = {
-          center: new window.kakao.maps.LatLng(latitude, longitude),
-          level: 3,
-        };
-        mapRef.current = new window.kakao.maps.Map(mapContainer.current, mapOption);
-        geocoderRef.current = new window.kakao.maps.services.Geocoder();
-      } else {
-        // 지도 중심만 이동
-        mapRef.current.setCenter(new window.kakao.maps.LatLng(latitude, longitude));
-      }
+    // 지도가 아직 생성되지 않았다면 새로 생성합니다.
+    if (!mapRef.current) {
+      const mapOption = {
+        center: new window.kakao.maps.LatLng(latitude, longitude),
+        level: 3,
+      };
+      mapRef.current = new window.kakao.maps.Map(mapContainer.current, mapOption);
+      geocoderRef.current = new window.kakao.maps.services.Geocoder();
+    } else {
+      // 이미 지도가 있다면 중심 좌표만 부드럽게 이동시킵니다.
+      mapRef.current.panTo(new window.kakao.maps.LatLng(latitude, longitude));
+    }
+  }, [isLoaded, latitude, longitude]);
 
-      // 기존 마커 제거
-      markersRef.current.forEach((m) => m.setMap(null));
-      markersRef.current = [];
+  // 마커 관리
+  useEffect(() => {
+    if (!mapRef.current) return;
 
-      // 새 마커 추가
-      if (markers) {
-        markers.forEach((markerInfo) => {
-          const marker = new window.kakao.maps.Marker({
-            position: new window.kakao.maps.LatLng(markerInfo.lat, markerInfo.lng),
-            title: markerInfo.title,
-          });
-          marker.setMap(mapRef.current);
-          markersRef.current.push(marker);
+    // 기존 마커 제거
+    markersRef.current.forEach((m) => m.setMap(null));
+    markersRef.current = [];
+
+    // 새 마커 추가
+    if (markers) {
+      markers.forEach((markerInfo) => {
+        const marker = new window.kakao.maps.Marker({
+          position: new window.kakao.maps.LatLng(markerInfo.lat, markerInfo.lng),
+          title: markerInfo.title,
         });
-      }
+        marker.setMap(mapRef.current);
+        markersRef.current.push(marker);
+      });
+    }
+  }, [markers]);
 
-      // 지도 클릭 이벤트 (주소 선택)
-      if (onAddressSelect && geocoderRef.current) {
-        // 중복 등록 방지: 기존 이벤트 제거 후 다시 등록
-        window.kakao.maps.event.removeListener(mapRef.current, "click");
+  // 클릭 이벤트 핸들러 관리
+  useEffect(() => {
+    if (!mapRef.current || !onAddressSelect || !geocoderRef.current) return;
 
-        window.kakao.maps.event.addListener(mapRef.current, "click", (mouseEvent: any) => {
-          const coord = mouseEvent.latLng;
-          geocoderRef.current.coord2Address(
-            coord.getLng(),
-            coord.getLat(),
-            (
-              result: Array<{ road_address?: { address_name: string }; address?: { address_name: string } }>,
-              status: "OK" | "ZERO_RESULT" | "ERROR"
-            ) => {
-              if (status === window.kakao.maps.services.Status.OK) {
-                const newAddress =
-                  result[0]?.road_address?.address_name || result[0]?.address?.address_name;
-                if (newAddress) {
-                  onAddressSelect(newAddress);
-                }
-              }
-            }
-          );
-        });
-      }
-    });
-  }, [isLoaded, latitude, longitude, markers, onAddressSelect]);
+    const handleClick = (mouseEvent: any) => {
+      const coord = mouseEvent.latLng;
+      geocoderRef.current.coord2Address(coord.getLng(), coord.getLat(), (result: any, status: any) => {
+        if (status === window.kakao.maps.services.Status.OK) {
+          const newAddress = result[0]?.road_address?.address_name || result[0]?.address?.address_name;
+          if (newAddress) onAddressSelect(newAddress);
+        }
+      });
+    };
+
+    window.kakao.maps.event.addListener(mapRef.current, "click", handleClick);
+
+    // useEffect의 cleanup 함수: 컴포넌트가 언마운트되거나 onAddressSelect가 변경될 때 리스너를 제거합니다.
+    return () => {
+      window.kakao.maps.event.removeListener(mapRef.current, "click", handleClick);
+    };
+  }, [onAddressSelect]); // onAddressSelect 콜백이 변경될 때만 이 effect를 재실행합니다.
 
   return <div ref={mapContainer} style={{ width: "100%", height: "400px" }} />;
 }

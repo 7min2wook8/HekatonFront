@@ -97,9 +97,11 @@ function ContestCreateContent() {
   const [displayAddress, setDisplayAddress] = useState(""); // 최종 확정되어 화면에 표시될 주소
   const [searchAddress, setSearchAddress] = useState(""); // 지도 검색용 주소 상태
   const [searchResults, setSearchResults] = useState<any[]>([]); // 키워드 검색 결과
+  const [selectedResultIndex, setSelectedResultIndex] = useState(-1); // 키보드 선택 인덱스
   const [isSearching, setIsSearching] = useState(false); // 키워드 검색 로딩 상태
-
-
+  
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+  const resultsListRef = useRef<HTMLUListElement>(null); // 검색 결과 목록 ref
   
   const geocoderRef = useRef<any>(null);
   const placesRef = useRef<any>(null); // 장소 검색 객체
@@ -117,6 +119,7 @@ function ContestCreateContent() {
   useEffect(() => {
     if (!searchAddress.trim() || !placesRef.current) {
       setSearchResults([]);
+      setSelectedResultIndex(-1);
       return;
     }
 
@@ -131,12 +134,43 @@ function ContestCreateContent() {
           } else {
             setSearchResults([]);
           }
+          setSelectedResultIndex(-1); // 검색 완료 후 인덱스 초기화
         }
       );
     }, 300); // 300ms 디바운스
 
     return () => clearTimeout(debounceTimer);
   }, [searchAddress]);
+
+  // 외부 클릭 시 검색 결과 숨기기
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        searchContainerRef.current &&
+        !searchContainerRef.current.contains(event.target as Node)
+      ) {
+        setSearchResults([]);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // 키보드 선택 시 스크롤 이동
+  useEffect(() => {
+    if (selectedResultIndex < 0 || !resultsListRef.current) return;
+
+    const selectedItem = resultsListRef.current.children[
+      selectedResultIndex
+    ] as HTMLLIElement;
+    if (selectedItem) {
+      selectedItem.scrollIntoView({
+        block: "nearest",
+      });
+    }
+  }, [selectedResultIndex]);
 
   // 지도에서 주소가 선택되었을 때 호출되는 함수
   const handleAddressSelect = (address: string) => {
@@ -175,11 +209,28 @@ function ContestCreateContent() {
     setSearchResults([]); // 검색 결과 목록 숨기기
   };
 
-  let count = 0;
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (searchResults.length === 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSelectedResultIndex((prev) =>
+        prev < searchResults.length - 1 ? prev + 1 : prev,
+      );
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSelectedResultIndex((prev) => (prev > 0 ? prev - 1 : 0));
+    } else if (e.key === "Enter") {
+      if (selectedResultIndex > -1) {
+        e.preventDefault();
+        handlePlaceSelect(searchResults[selectedResultIndex]);
+      }
+    }
+  };
+
   // 모달에서 "확인" 버튼 클릭 시 실행될 함수
-  const handleConfirmAddress = () => {
-    count++
-    console.log(count)
+  const handleConfirmAddress = () => {    
+
     setDisplayAddress(tempAddress); // 화면에 표시할 주소 업데이트
     const { regionSi, regionGu } = parseAddress(tempAddress) || {
       regionSi: "",
@@ -512,7 +563,7 @@ function ContestCreateContent() {
                               <DialogDescription>지도에서 지역을 선택해주세요.</DialogDescription>
                             </DialogHeader>
                             <div className="py-4 space-y-4">
-                              <div className="relative">
+                              <div className="relative" ref={searchContainerRef}>
                                 <div className="flex items-center gap-2">
                                   <Input
                                     placeholder="건물, 장소, 주소로 검색"
@@ -520,6 +571,7 @@ function ContestCreateContent() {
                                     onChange={(e) =>
                                       setSearchAddress(e.target.value)
                                     }
+                                    onKeyDown={handleKeyDown}
                                   />
                                   {isSearching && (
                                     <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
@@ -528,12 +580,22 @@ function ContestCreateContent() {
                                 {searchResults.length > 0 && (
                                   <Card className="absolute z-10 w-full mt-1 max-h-60 overflow-y-auto shadow-lg">
                                     <CardContent className="p-0">
-                                      <ul className="divide-y">
-                                        {searchResults.map((place) => (
+                                      <ul
+                                        className="divide-y"
+                                        ref={resultsListRef}
+                                      >
+                                        {searchResults.map((place, index) => (
                                           <li
                                             key={place.id}
                                             onClick={() => handlePlaceSelect(place)}
-                                            className="p-3 hover:bg-gray-100 rounded-md cursor-pointer"
+                                            onMouseEnter={() =>
+                                              setSelectedResultIndex(index)
+                                            }
+                                            className={`p-3 hover:bg-gray-100 rounded-md cursor-pointer ${
+                                              index === selectedResultIndex
+                                                ? "bg-gray-100"
+                                                : ""
+                                            }`}
                                           >
                                             <p className="font-semibold text-sm">{place.place_name}</p>
                                             <p className="text-xs text-gray-500">{place.road_address_name || place.address_name}</p>

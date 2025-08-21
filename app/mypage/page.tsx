@@ -27,6 +27,7 @@ import ProtectedRoute from "@/components/protected-route"
 import { useAuth, type Profile } from "@/contexts/auth-context"
 import { useTeam } from "@/contexts/team-context"
 import { toast } from "sonner"
+import LoadingView from "@/components/loading-view"
 import {AUTH_SERVER_URL, API_GATEWAY_URL} from "@/src/config"
 
 interface FavoriteContest {
@@ -62,6 +63,7 @@ function MyPageContent() {
 
   const [myProfileData, setProfileData] = useState<Profile>()
 
+  // 초대 목록 불러오기
   const fetchInvitations = useCallback(async () => {
     if (!user?.id) return
 
@@ -129,12 +131,11 @@ function MyPageContent() {
 
         const data = await response.json()
         setFavoriteContests(data || [])
+        setIsLoadingFavorites(false)
       } catch (error: any) {
         setFavoritesError(error.message)
         setFavoriteContests([])
-      } finally {
-        setIsLoadingFavorites(false)
-      }
+      } 
     }
 
     fetchFavoriteContests()
@@ -217,7 +218,7 @@ function MyPageContent() {
     }
   }
 
-  if (!user) return null
+  
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -240,7 +241,20 @@ function MyPageContent() {
     }
   }
 
+  if (!user || !myProfileData) {
+    return <LoadingView message="사용자 정보를 확인하고 있습니다." />
+  }
+
+  if (isLoadingFavorites) {
+    return <LoadingView message="좋아요 정보를 확인하고 있습니다." />
+  }
+
+  if (isLoadingInvitations) {
+     return <LoadingView message="사용자 정보를 확인하고 있습니다." />
+    }
+
   return (
+
     <div className="min-h-screen bg-gray-50">
       <Header />
 
@@ -582,7 +596,7 @@ function MyPageContent() {
 
 export default function MyPage() {
   return (
-    <ProtectedRoute>
+    <ProtectedRoute redirectTo="/">
       <MyPageContent />
     </ProtectedRoute>
   )

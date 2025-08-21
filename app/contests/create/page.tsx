@@ -34,6 +34,8 @@ import Footer from "@/components/footer";
 import ProtectedRoute from "@/components/protected-route";
 import { formatPhoneNumber } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth-context";
+import LoadingView from "@/components/loading-view";
+import ErrorDialog from "@/components/error-dialog";
 import KakaoMap from "@/components/KakaoMap";
 import {
   Dialog,
@@ -48,7 +50,6 @@ import {
 import { MapPin } from "lucide-react";
 import {AUTH_SERVER_URL, API_GATEWAY_URL} from "@/src/config"
 import { useKakaoMap } from "@/contexts/kakao-map-context";
-import { Description } from "@radix-ui/react-dialog";
 
 
 const eligibilityOptions = [
@@ -404,9 +405,21 @@ function ContestCreateContent() {
       eligibility: formData.eligibility.filter((e) => e !== eligibility),
     });
   };
-
-  if (!user) return null;
-  // 공모전 등록 성공 시 출력 페이지
+  if (!user) {
+    return <LoadingView message="사용자 정보를 확인하고 있습니다." />
+  }
+  if (isLoading) {
+    return <LoadingView message="프로필 정보를 불러오는 중입니다." />
+  }
+  if (error) {
+    return (
+      <ErrorDialog
+        isOpen={true}
+        onClose={() => setError(null)}
+        title="오류 발생"
+        message={error}
+      />);
+  }
   if (success) {
     return (
       <div className="min-h-screen bg-gray-50">

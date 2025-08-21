@@ -1,0 +1,22 @@
+
+1. 팀 지원 신청 명령어(한줄로 사용)
+curl -X POST http://localhost:8080/api/applications/191b3500-88f7-44fe-bfa9-1471f427c598/applyapplications 
+-H "Content-Type: application/json" -b cookies.txt -d '{"message":"지원합니다"}'
+
+2. 해당 팀에 들어온 신청 목록 보기
+curl -X GET  http://localhost:8080/api/applications/191b3500-88f7-44fe-bfa9-1471f427c598/showapplications -b cookies.txt
+
+
+3. 특정 지원 승인 (지원서 ID 필요)
+curl -X PUT http://localhost:8080/api/applications/applications/549a1255-d37f-4af8-b3a7-eb0996abf397/approve -b cookies.txt
+ 
+ 4. 특정 지원 거절
+curl -X PUT http://localhost:8080/api/applications/applications/549a1255-d37f-4af8-b3a7-eb0996abf397/reject -b cookies.txt
+
+5. 특정 지원 취소 (지원자가 직접)
+curl -X DELETE http://localhost:8080/api/applications/1a7a248f-6fc6-40e7-908b-dcf025471cad -b cookies.txt
+
+6. 내가 한 모든 지원 목록 조회 
+curl -X GET http://localhost:8080/api/applications/users/me/applications -b cookies.txt 
+
+

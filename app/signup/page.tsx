@@ -89,7 +89,7 @@ export default function SignupPage() {
       }
       else {
         // 회원가입 실패
-        setError(response.message || "회원가입에 실패했습니다. 다시 시도해주세요.")
+        setError(response.message || "회원가입 중 오류가 발생했습니다. 다시 시도해주세요.")
       }
 
       

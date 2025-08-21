@@ -10,6 +10,7 @@ import ChatWidget from "@/components/chat-widget"
 import Footer from "@/components/footer"
 import Link from "next/link"
 import { useContest, Contest } from "@/contexts/contest-context"
+import LoadingView from "@/components/loading-view"
 
 // const contests = [
 //   {
@@ -125,12 +126,14 @@ export default function HomePage() {
         
         setHeroPosters(result.contests);
         setContests(result.contests);
+        //setIsLoading(false)
+        //console.log("불러옴")
       }
     } catch (error) {
       console.log(error)
     }finally{
       setIsLoading(false)
-      
+      //console.log("finally")
     }
     
   }
@@ -160,10 +163,6 @@ export default function HomePage() {
     startTimer() // 타이머 초기화
   }
 
-
-  // const filteredContests =
-  //   selectedRegion === "전체" ? contests : contests.filter((contest) => contest.regionSi === selectedRegion)
-
     // 지역 필터 버튼 클릭 시 서버에 데이터 요청
   const handleRegionFilter = async (region: string) => {
     setSelectedRegion(region)
@@ -185,7 +184,9 @@ export default function HomePage() {
     }
     setIsFiltering(false)
   }
-
+  if (isLoading) {
+    return <LoadingView message="화면 불러오는 중..."></LoadingView>
+  }
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -193,11 +194,7 @@ export default function HomePage() {
       {/* Hero Section - 대형 포스터 슬라이드 */}
       <section className="relative h-[600px] overflow-hidden">
         <div className="relative w-full h-full">
-          {
-           isLoading ? (
-              <p>대회 포스터를 불러오는 중...</p>
-            )
-             : (heroPosters.map((poster, index) => (
+          {(heroPosters.map((poster, index) => (
             <div
               key={poster.id}
               className={`absolute inset-0 transition-transform duration-500 ease-in-out ${

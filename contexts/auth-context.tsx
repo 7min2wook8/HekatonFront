@@ -90,8 +90,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (res.ok) {
 
           const data = await res.json();
-          //console.log("세션 확인 성공:", data);
-
           // 자동 로그인 후 사용자 정보 가져오기
           const meRes = await fetch(`${API_GATEWAY_URL}/api/users/me`, {
             method: 'GET',
@@ -188,8 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     finally {
       setIsLoading(false)
     }
-  }
-  
+  }  
   // 로그인 함수
   // 이메일과 비밀번호를 받아서 로그인 처리
   const login = async (username: string, password: string): Promise<{ success: boolean; message: string }> => {

@@ -31,12 +31,14 @@ import Header from "@/components/header"
 import Footer from "@/components/footer"
 import { Profile, Skills, useAuth, UserSkills } from "@/contexts/auth-context"
 import ProtectedRoute from "@/components/protected-route"
+import LoadingView from "@/components/loading-view"
 
 function ProfileEditContent() {
-   const { viewProfile, saveProfile, user, 
+   const { viewProfile, saveProfile, user, isLoading,
     viewUserSkills, saveUserSkills,  getSkills } = useAuth()
 
-   const [isLoading, setIsLoading] = useState(false)
+   const [isProfileLoaded, setIsProfileLoaded] = useState(false);
+   //const [isLoading, setIsLoading] = useState(false)
  
    //선택된 스킬 데이터 저장
    const [selectSkill, setSelectSkill] = useState<Skills[]>([]); // 빈 Skills 배열로 초기화
@@ -61,8 +63,6 @@ function ProfileEditContent() {
    
    useEffect(() => {
 
-     setIsLoading(true)     
-
      if (user) { // 인증되었고 사용자가 존재할 때만 데이터 가져오기
 
        fetchUserData(); 
@@ -72,10 +72,7 @@ function ProfileEditContent() {
       router.push("/")
 
      }
-       
-     setIsLoading(false)
-     
-     
+
    }, [user]); // 와 user에 의존
 
 
@@ -83,7 +80,7 @@ function ProfileEditContent() {
   const fetchUserData = async () => {
 
     try {
-
+      setIsProfileLoaded(true)     
       const [profileResult, userSkillsResult, skillsResult] = await Promise.all([
         viewProfile(),
         viewUserSkills(),
@@ -115,14 +112,19 @@ function ProfileEditContent() {
         userSkillIds.includes(skill.id)); // 
 
         setSelectSkill(selectedSkills); // ✅ 선택된 것만 저장
-
+        setIsProfileLoaded(false)
       }else{
         console.warn("사용자의 스킬 정보가 불러오기 실패함");
       }
 
     } catch (error) {
       console.error("프로필 또는 스킬 정보 로딩 중 오류:", error);
+    }finally{
+      setIsProfileLoaded(false)
     }
+
+
+
   };
 
 
@@ -134,7 +136,7 @@ function ProfileEditContent() {
     if (profile == null || user == null) {
       return;
     }
-    setIsLoading(true)
+    setIsProfileLoaded(true)
 
     try {
       
@@ -175,7 +177,7 @@ function ProfileEditContent() {
     } catch (error) {
       console.error("프로필 업데이트 오류:", error)
     } finally {
-      setIsLoading(false)
+      setIsProfileLoaded(false)
     }
   }
 
@@ -195,31 +197,10 @@ function ProfileEditContent() {
   }
   
   if (!user) {
-    
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="w-96">
-          <CardContent className="p-8 text-center">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">로딩 중...</h3>
-            <p className="text-gray-600">사용자 정보를 확인하고 있습니다.</p>
-          </CardContent>
-        </Card>
-      </div>
-    )
+    return <LoadingView message="사용자 정보를 확인하고 있습니다." />
   }
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="w-96">
-          <CardContent className="p-8 text-center">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">로딩 중...</h3>
-            <p className="text-gray-600">프로필 정보를 불러오는 중입니다.</p>
-          </CardContent>
-        </Card>
-      </div>
-    )
+  if (isProfileLoaded) {
+    return <LoadingView message="프로필 정보를 불러오는 중입니다." />
   }
 
   return (
@@ -493,7 +474,7 @@ function ProfileEditContent() {
 
 export default function ProfileEditPage() {
   return (
-    <ProtectedRoute>
+    <ProtectedRoute redirectTo="/">
       <ProfileEditContent />
     </ProtectedRoute>
   )

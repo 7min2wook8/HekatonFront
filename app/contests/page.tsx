@@ -13,6 +13,7 @@ import Header from "@/components/header"
 import Footer from "@/components/footer"
 import RegionFilter from "@/components/region-filter"
 import {AUTH_SERVER_URL, API_GATEWAY_URL} from "@/src/config"
+import LoadingView from "@/components/loading-view"
 
 export default function ContestsPage() {
   // 상태 관리
@@ -144,6 +145,11 @@ export default function ContestsPage() {
     fetchContests();
   }, [searchTerm, selectedCategory, selectedLocations, selectedStatus, page, sortBy, sortDir, categories]);
 
+  if (isLoading) {
+     
+    return <LoadingView message="사용자 정보를 확인하고 있습니다." />
+    
+  }
   // 페이지 렌더링
   return (
     <div className="min-h-screen bg-gray-50">

@@ -14,7 +14,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, Eye, EyeOff } from "lucide-react"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
-import ErrorDialog from "@/components/error-dialog"
 import { useAuth } from "@/contexts/auth-context"
 
 export default function LoginPage() {
@@ -27,12 +26,6 @@ export default function LoginPage() {
   const [errorType, setErrorType] = useState<"auth" | "network" | "validation" | "general" | null>(null)
   const [error, setError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [showErrorDialog, setShowErrorDialog] = useState(false)
-  const [errorDialogData, setErrorDialogData] = useState({
-    title: "",
-    message: "",
-    type: "general" as "auth" | "network" | "validation" | "general",
-  })
   const { login, isAuthenticated } = useAuth()
   const router = useRouter()
 
@@ -48,7 +41,7 @@ export default function LoginPage() {
     setError("")
     setErrorType(null)
     setIsSubmitting(true)
-
+    
     try {
       const result = await login(formData.id, formData.password)
 
@@ -67,7 +60,7 @@ export default function LoginPage() {
   }
 
   const handleLoginError = (message: string) => {
-    if (message.includes("아이디") || message.includes("비밀번호") || message.includes("올바르지 않습니다")) {
+    if (message.includes("아이디") || message.includes("비밀번호") || message.includes("올바르지 않습니다") || message.includes("Invalid credentials")) {
       setError("입력하신 아이디 또는 비밀번호가 올바르지 않습니다.")
       setErrorType("auth")
     } else if (message.includes("계정") && message.includes("존재하지")) {
@@ -89,13 +82,6 @@ export default function LoginPage() {
       setError(message || "알 수 없는 오류가 발생했습니다. 잠시 후 다시 시도해주세요.")
       setErrorType("general")
     }
-  }
-
-  const handleRetry = () => {
-    setShowErrorDialog(false)
-    setError("")
-    // 폼 포커스
-    document.getElementById("email")?.focus()
   }
 
   return (
@@ -140,7 +126,7 @@ export default function LoginPage() {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">아이디</Label>
+                  <Label htmlFor="ID">아이디</Label>
                   <Input
                     id="text"
                     type="text"
@@ -221,17 +207,6 @@ export default function LoginPage() {
           </Card>
         </div>
       </div>
-
-      {/* 에러 다이얼로그 */}
-      <ErrorDialog
-        isOpen={showErrorDialog}
-        onClose={() => setShowErrorDialog(false)}
-        title={errorDialogData.title}
-        message={errorDialogData.message}
-        type={errorDialogData.type}
-        onRetry={handleRetry}
-        showHelp={attemptCount >= 3}
-      />
 
       <Footer />
     </div>
